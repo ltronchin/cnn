@@ -30,7 +30,7 @@ from classi.Score import Score
 class Bootstrap():
 
     def __init__(self, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, factor, boot_iter,
-                 augmented, alexnet, my_callbacks, run_folder, load):
+                 n_patient_test, augmented, alexnet, my_callbacks, run_folder, load):
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
 
@@ -42,6 +42,7 @@ class Bootstrap():
         self.batch = batch
         self.factor = factor
         self.boot_iter = boot_iter
+        self.n_patient_test = n_patient_test
         self.augmented = augmented
 
         self.alexnet = alexnet
@@ -86,7 +87,7 @@ class Bootstrap():
             # replace -> se True, estrazione con reintroduzione
             # Estrazione random degli indici di 15 pazienti con reintroduzione (potrebbero essere meno di 15 pazienti
             # per effetto della reintroduzione)
-            test_set_index = resample(index, replace = True, n_samples = 10)
+            test_set_index = resample(index, replace = True, n_samples = self.n_patient_test)
             # Eliminazione degli indici duplicati dal test_set
             test_set_index = self.remove(test_set_index)
             # Creazione degli indici di training: il set di training è creato come la differenza tra il set completo e il

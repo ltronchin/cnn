@@ -25,13 +25,15 @@ l2 = 'none'
 lr = 0.0001
 validation_method = 'bootstrap'
 k = 8
+# Parametri per bootstrap
+n_patient_test = 10
 boot_iter = 5
 activation = 'relu'
 optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID1"
+slice_path = "ID2"
 allview = False
 view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -66,7 +68,7 @@ file.write("Epoche: {}, Batch size: {}\n".format(num_epochs, batch))
 file.write("Learning rate decay:{}\n".format(False))
 if validation_method == 'bootstrap':
     file.write("Numero Fold: {}\n".format(boot_iter))
-    file.write("Campioni di test estratti ad ogni fold: 10\n")
+    file.write("Campioni di test estratti ad ogni fold: {}\n".format(n_patient_test))
 else:
     file.write("Numero Fold: {}\n".format(k))
 file.write("Data Augmentation: {}, fattore moltiplicativo: {}\n".format(augmented, factor))
@@ -125,6 +127,7 @@ if validation_method == 'bootstrap':
         batch=batch,
         factor=factor,
         boot_iter=boot_iter,
+        n_patient_test=n_patient_test,
         augmented=augmented,
         alexnet=alexnet,
         my_callbacks=my_callbacks,

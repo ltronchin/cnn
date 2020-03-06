@@ -74,10 +74,10 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         model.add(layers.Dropout(0.5))
 
-        model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
+        model.add(layers.Dense(10, kernel_initializer = kernel_init, activation='softmax'))
 
         opt = self.get_opti(self.lr)
-        model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
+        model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
 
         return model
 
