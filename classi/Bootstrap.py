@@ -130,19 +130,18 @@ class Bootstrap():
             # Data augmentation
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
-                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, seed=42)
+                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, sample_weight=None)
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
-                train_datagen = ImageDataGenerator(
-                                                    rotation_range=45,
+                train_datagen = ImageDataGenerator(rotation_range=45,
                                                     width_shift_range=0.2,
                                                     height_shift_range=0.2,
                                                     shear_range=0.2)
-                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, seed=42)
+                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, sample_weight=None)
                 step_per_epoch = int(X_train.shape[0] / self.batch) * self.factor
                 print('Step per epoca: {}'.format(step_per_epoch))
             test_datagen = ImageDataGenerator()
-            validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True, seed=42)
+            validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True, sample_weight=None)
 
             self.how_generator_work(train_datagen, X_train, ID_paziente_slice_train, 'train')
             self.how_generator_work(test_datagen, X_val, ID_paziente_slice_val, 'validation')
@@ -160,8 +159,7 @@ class Bootstrap():
                     self.alexnet.save(self.run_folder, model)
                     first_iter = 1
                 # Fit del modello
-                history = model.fit(
-                                  train_generator,
+                history = model.fit(train_generator,
                                   steps_per_epoch = step_per_epoch,
                                   epochs = self.num_epochs,
                                   validation_data = validation_generator,
@@ -173,8 +171,7 @@ class Bootstrap():
                 model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)))
 
             # ---------------------------------------- SCORE SINGOLA FOLD ---------------------------------------------
-            score = Score(
-                          X_test=X_val,
+            score = Score(X_test=X_val,
                           Y_test=true_label_val,
                           k=idx,
                           alexnet=model,

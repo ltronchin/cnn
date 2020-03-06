@@ -3,6 +3,7 @@ from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from classi.Net_cifar10 import Net_cifar10
+from classi.Alexnet import Alexnet
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -30,7 +31,7 @@ input_dim = (32, 32, 3)
 batch_norm = True
 
 # ------------------------------- Creazione istanze classe Alexnet e classe Callbacks ----------------------------------
-net_cifar10 = Net_cifar10(
+alexnet = Alexnet(
                   input_dim = input_dim,
                   l1 = l1,
                   l2 = l2,
@@ -51,7 +52,7 @@ test_datagen = ImageDataGenerator()
 validation_generator = test_datagen.flow(x_test, y_test, batch_size=32,shuffle=True, sample_weight=None)
 
 # Costruzione del modello
-model = net_cifar10.build_alexnet()
+model = alexnet.build_alexnet()
 
 # Fit del modello
 history = model.fit(

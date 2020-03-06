@@ -2,11 +2,11 @@ import os
 import datetime
 import numpy as np
 
-from classi import Alexnet
-from classi import Load
-from classi import My_callbacks
-from classi import KFold
-from classi import Bootstrap
+from classi.Alexnet import Alexnet
+from classi.Load import Load
+from classi.My_callbacks import My_callbacks
+from classi.KFold import KFold
+from classi.Bootstrap import Bootstrap
 
 # --------------------------- Aggiunta ambiente virtuale tensorflow i path di Graphviz e CUPTI ------------------------
 os.environ["PATH"] += os.pathsep + 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0/extras/CUPTI/libx64'
@@ -14,8 +14,7 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
-augmented = 1
-# fattore moltiplicativo per incrementare le immagini che passano attraverso la rete nel training (maggiore di
+augmented = 1 # fattore moltiplicativo per incrementare le immagini che passano attraverso la rete nel training (maggiore di
 # 1 solo se "augmented" è settato a 1)
 factor = 1
 load = False
@@ -32,13 +31,15 @@ optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID2"
-
+slice_path = "ID1"
+allview = False
+view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
 model = 'CNN_Alexnet'
 time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 run_folder = 'run\\{}\\'.format(model)
 run_folder += '___'.join([time])
+
 print(run_folder)
 if not os.path.exists(run_folder):
     os.makedirs(run_folder)
@@ -47,6 +48,10 @@ if not os.path.exists(run_folder):
 
 file = open(os.path.join(run_folder, "Parameters.txt"), "a")
 file.write("Dataset: {}\n".format(slice_path))
+if allview == True:
+    file.write("View: {}\n".format(allview))
+else:
+    file.write("View: {}\n".format(view))
 file.write("Model: Alexnet\n")
 file.write("Validation method: {}\n".format(validation_method))
 file.write("Layer: 32, 32, 64, 64, 128, 128, 256 \n")
@@ -72,22 +77,27 @@ file.close()
 # Creazione istanza della classe Load
 load = Load(path_pazienti = "D:/Download/data/pazienti.mat")
 
-view = 'layer'
-load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
-ID_paziente, label_paziente = load.ID_paziente()
-slices_layer, labels_layer, ID_paziente_slice_layer = load.slices()
+if allview == True:
+    view = 'layer'
+    load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+    ID_paziente, label_paziente = load.ID_paziente()
+    slices_layer, labels_layer, ID_paziente_slice_layer = load.slices()
 
-view = 'row'
-load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
-slices_row, labels_row, ID_paziente_slice_row = load.slices()
+    view = 'row'
+    load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+    slices_row, labels_row, ID_paziente_slice_row = load.slices()
 
-view = 'column'
-load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
-slices_column, labels_column, ID_paziente_slice_column = load.slices()
+    view = 'column'
+    load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+    slices_column, labels_column, ID_paziente_slice_column = load.slices()
 
-slices = np.concatenate((slices_layer, slices_row, slices_column), axis = 0)
-labels = np.concatenate((labels_layer, labels_row, labels_column), axis = 0)
-ID_paziente_slice = np.concatenate((ID_paziente_slice_layer, ID_paziente_slice_row, ID_paziente_slice_column), axis = 0)
+    slices = np.concatenate((slices_layer, slices_row, slices_column), axis = 0)
+    labels = np.concatenate((labels_layer, labels_row, labels_column), axis = 0)
+    ID_paziente_slice = np.concatenate((ID_paziente_slice_layer, ID_paziente_slice_row, ID_paziente_slice_column), axis = 0)
+else:
+    load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+    ID_paziente, label_paziente = load.ID_paziente()
+    slices, labels, ID_paziente_slice = load.slices()
 
 # ------------------------------- Creazione istanze classe Alexnet e classe Callbacks ----------------------------------
 alexnet = Alexnet(

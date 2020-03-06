@@ -5,8 +5,8 @@ import xlsxwriter
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-from Slices import Slices
-from Score import Score
+from classi.Slices import Slices
+from classi.Score import Score
 
 class KFold():
 

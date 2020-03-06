@@ -5,7 +5,7 @@ from tensorflow.keras.utils import plot_model
 import os
 import pickle as pkl
 from tensorflow.keras import regularizers
-class Alexnet1():
+class Alexnet():
 
     def __init__(self, input_dim, l1, l2, lr, cnn_activation, cnn_optimiser, cnn_initializer, run_folder, batch_norm):
         self.input_dim = input_dim
@@ -74,10 +74,10 @@ class Alexnet1():
             model.add(layers.BatchNormalization())
         model.add(layers.Dropout(0.5))
 
-        model.add(layers.Dense(10, kernel_initializer = kernel_init, activation='softmax'))
+        model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
 
         opt = self.get_opti(self.lr)
-        model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
+        model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
 
         return model
 
