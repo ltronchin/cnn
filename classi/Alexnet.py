@@ -77,7 +77,7 @@ class Alexnet():
         model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
 
         opt = self.get_opti(self.lr)
-        model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
+        model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
 
         return model
 

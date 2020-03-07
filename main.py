@@ -18,23 +18,24 @@ augmented = 1 # fattore moltiplicativo per incrementare le immagini che passano 
 # 1 solo se "augmented" è settato a 1)
 factor = 1
 load = False
-num_epochs = 500
+num_epochs = 200
 batch = 128
 l1 = 'none'
 l2 = 'none'
 lr = 0.0001
 validation_method = 'bootstrap'
+# Parametri kfold
 k = 8
 # Parametri per bootstrap
 n_patient_test = 10
-boot_iter = 10
+boot_iter = 3
 activation = 'relu'
 optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID1"
-allview = True
+slice_path = "ID4_10_90_perc"
+allview = False
 view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
 model = 'CNN_Alexnet'
@@ -51,23 +52,23 @@ if not os.path.exists(run_folder):
 file = open(os.path.join(run_folder, "Parameters.txt"), "a")
 file.write("Dataset: {}\n".format(slice_path))
 if allview == True:
-    file.write("View: {}\n".format(allview))
+    file.write("Allview: {}\n".format(allview))
 else:
     file.write("View: {}\n".format(view))
 file.write("Model: Alexnet\n")
 file.write("Validation method: {}\n".format(validation_method))
-file.write("Layer: 32, 32, 64, 64, 128, 128, 256 \n")
+file.write("Layer: 32, 32, 64, 64, 128, 128, 128 \n")
 file.write("Kernel: 3, 3, 3, 3, 3, 3\n")
 file.write("Regularization: {}, {}\n".format(l1, l2))
 file.write("Activation: {}\n".format(activation))
 file.write("Initializer: {}\n".format(initializer))
-file.write("Dropout: 0.2, 0.3, 0.4, 0.5 \n")
+file.write("Dropout: 0.5, 0.5, 0.5, 0.5 \n")
 file.write("Batch normalization: {}\n".format(batch_norm))
 file.write("Learning rate: {}\n".format(lr))
 file.write("Epoche: {}, Batch size: {}\n".format(num_epochs, batch))
 file.write("Learning rate decay:{}\n".format(False))
 if validation_method == 'bootstrap':
-    file.write("Numero Fold: {}\n".format(boot_iter))
+    file.write("Numero iterazioni bootstrap: {}\n".format(boot_iter))
     file.write("Campioni di test estratti ad ogni fold: {}\n".format(n_patient_test))
 else:
     file.write("Numero Fold: {}\n".format(k))

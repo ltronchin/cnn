@@ -1,5 +1,6 @@
 import scipy.io as sio # libreria per importare i dati da Matlab
 import numpy as np
+import copy
 
 class Load():
 
@@ -39,7 +40,11 @@ class Load():
         ID_paziente = np.asarray(ID_paziente)
         lab_paziente = np.asarray(lab_paziente)
 
-        return ID_paziente, lab_paziente
+        ID_paziente_shuffle = copy.deepcopy(ID_paziente)
+        lab_paziente_shuffle = copy.deepcopy(lab_paziente)
+        ID_paziente_shuffle, lab_paziente_shuffle = self.shuffle_in_unison(ID_paziente_shuffle, lab_paziente_shuffle)
+
+        return ID_paziente_shuffle, lab_paziente_shuffle
 
     # --- Creazione di tre liste che contengono rispettivamente le immagini, le label e l'ID_paziente per ogni slice ---
     def slices(self):
