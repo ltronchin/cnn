@@ -18,7 +18,7 @@ augmented = 1 # fattore moltiplicativo per incrementare le immagini che passano 
 # 1 solo se "augmented" è settato a 1)
 factor = 1
 load = False
-num_epochs = 100
+num_epochs = 500
 batch = 128
 l1 = 'none'
 l2 = 'none'
@@ -27,14 +27,14 @@ validation_method = 'bootstrap'
 k = 8
 # Parametri per bootstrap
 n_patient_test = 10
-boot_iter = 5
+boot_iter = 10
 activation = 'relu'
 optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID2"
-allview = False
+slice_path = "ID1"
+allview = True
 view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
 model = 'CNN_Alexnet'

@@ -35,7 +35,7 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         # Pooling 1
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dropout(0.5))
 
         # Convoluzione 3
         model.add(layers.Conv2D(64, (3, 3), kernel_initializer = kernel_init, padding='same'))
@@ -49,7 +49,7 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         # Pooling 2
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.3))
+        model.add(layers.Dropout(0.5))
 
         # Convoluzione 5
         model.add(layers.Conv2D(128, (3, 3), kernel_initializer = kernel_init, padding='same'))
@@ -63,21 +63,21 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         # Pooling 3
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.4))
+        model.add(layers.Dropout(0.5))
 
         model.add(layers.Flatten())
 
         # Fully connected 1
-        model.add(layers.Dense(256, kernel_initializer = kernel_init))
+        model.add(layers.Dense(128, kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
         model.add(layers.Dropout(0.5))
 
-        model.add(layers.Dense(10, kernel_initializer = kernel_init, activation='softmax'))
+        model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
 
         opt = self.get_opti(self.lr)
-        model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
+        model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'], sample_weight_mode=None)
 
         return model
 

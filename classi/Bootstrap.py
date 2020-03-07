@@ -135,9 +135,9 @@ class Bootstrap():
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
                 train_datagen = ImageDataGenerator(rotation_range=45,
-                                                    width_shift_range=0.2,
-                                                    height_shift_range=0.2,
-                                                    shear_range=0.2)
+                                                   width_shift_range=0.2,
+                                                   height_shift_range=0.2,
+                                                   shear_range=0.2)
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, sample_weight=None)
                 step_per_epoch = int(X_train.shape[0] / self.batch) * self.factor
                 print('Step per epoca: {}'.format(step_per_epoch))
