@@ -27,14 +27,14 @@ validation_method = 'bootstrap'
 # Parametri kfold
 k = 8
 # Parametri per bootstrap
-n_patient_test = 10
-boot_iter = 3
+n_patient_test = 5
+boot_iter = 15
 activation = 'relu'
 optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID4_10_90_perc"
+slice_path = "ID2_10_90_perc"
 allview = False
 view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
