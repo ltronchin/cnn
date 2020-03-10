@@ -1,7 +1,6 @@
 import os
 import datetime
 import numpy as np
-
 from classi.Alexnet import Alexnet
 from classi.Load import Load
 from classi.My_callbacks import My_callbacks
@@ -36,6 +35,7 @@ batch_norm = True
 slice_path = "ID2_10_90_perc"
 allview = False
 view = 'layer'
+
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
 model = 'CNN_Alexnet'
 time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -78,7 +78,6 @@ file.close()
 # ------------------------------------------ Caricamento dati -----------------------------------------------
 # Creazione istanza della classe Load
 load = Load(path_pazienti = "D:/Download/data/pazienti_new.mat")
-
 if allview == True:
     view = 'layer'
     load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
@@ -102,8 +101,7 @@ else:
     slices, labels, ID_paziente_slice = load.slices()
 
 # ------------------------------- Creazione istanze classe Alexnet e classe Callbacks ----------------------------------
-alexnet = Alexnet(
-                  input_dim = input_dim,
+alexnet = Alexnet(input_dim = input_dim,
                   l1 = l1,
                   l2 = l2,
                   lr = lr,
@@ -112,27 +110,26 @@ alexnet = Alexnet(
                   cnn_initializer = initializer,
                   run_folder = run_folder,
                   batch_norm = batch_norm)
-
 my_callbacks = My_callbacks(run_folder)
+
 # ---------------------------------------- Creazione istanza classe Kfold ----------------------------------------------
-run_net = Run_net(
-    validation_method = validation_method,
-    ID_paziente=ID_paziente,
-    label_paziente=label_paziente,
-    slices=slices,
-    labels=labels,
-    ID_paziente_slice=ID_paziente_slice,
-    num_epochs=num_epochs,
-    batch=batch,
-    factor=factor,
-    boot_iter=boot_iter,
-    k_iter = k,
-    n_patient_test=n_patient_test,
-    augmented=augmented,
-    alexnet=alexnet,
-    my_callbacks=my_callbacks,
-    run_folder=run_folder,
-    load=load)
+run_net = Run_net(validation_method = validation_method,
+                  ID_paziente=ID_paziente,
+                  label_paziente=label_paziente,
+                  slices=slices,
+                  labels=labels,
+                  ID_paziente_slice=ID_paziente_slice,
+                  num_epochs=num_epochs,
+                  batch=batch,
+                  factor=factor,
+                  boot_iter=boot_iter,
+                  k_iter = k,
+                  n_patient_test=n_patient_test,
+                  augmented=augmented,
+                  alexnet=alexnet,
+                  my_callbacks=my_callbacks,
+                  run_folder=run_folder,
+                  load=load)
 run_net.run()
 
 file = open(os.path.join(run_folder, "Parameters.txt"), "a")
