@@ -7,7 +7,6 @@ import sys
 from classi.Alexnet import Alexnet
 import matplotlib.pyplot as plt
 
-
 # plot diagnostic learning curves
 def summarize_diagnostics(history):
     # plot loss
@@ -34,7 +33,7 @@ NUM_CLASSES = 10
 y_train = to_categorical(y_train, NUM_CLASSES)
 y_test = to_categorical(y_test, NUM_CLASSES)
 
-# ------------------------------------- Definizione dei parametri della run ---------------------------------
+# ------------------------------------- Definizione dei parametri della run --------------------------------------------
 
 l1 = 'none'
 l2 = 'none'
@@ -45,7 +44,7 @@ initializer = 'xavier'
 input_dim = (32, 32, 3)
 batch_norm = True
 
-# ------------------------------- Creazione istanze classe Alexnet e classe Callbacks ----------------------------------
+# ----------------------------------------- Creazione istanze classe Alexnet -------------------------------------------
 alexnet = Alexnet(input_dim = input_dim,
                   l1 = l1,
                   l2 = l2,
@@ -60,9 +59,10 @@ train_datagen = ImageDataGenerator(rotation_range=45,
                                     width_shift_range=0.1,
                                     height_shift_range=0.1,
                                     shear_range=0.1)
-train_generator = train_datagen.flow(x_train, y_train, batch_size=64, shuffle=True, sample_weight=None)
+
+train_generator = train_datagen.flow(x_train, y_train, batch_size=64, shuffle=True)
 test_datagen = ImageDataGenerator()
-validation_generator = test_datagen.flow(x_test, y_test, batch_size=64,shuffle=True, sample_weight=None)
+validation_generator = test_datagen.flow(x_test, y_test, batch_size=64,shuffle=True)
 
 # Costruzione del modello
 model = alexnet.build_alexnet()
@@ -72,7 +72,6 @@ history = model.fit(train_generator,
                     steps_per_epoch=(x_train.shape[0] / 64),
                     epochs=100,
                     validation_data=validation_generator,
-                    validation_steps=(x_test.shape[0] / 64),
-                    sample_weight=None)
+                    validation_steps=(x_test.shape[0] / 64))
 
 summarize_diagnostics(history)

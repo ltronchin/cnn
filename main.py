@@ -5,8 +5,7 @@ import numpy as np
 from classi.Alexnet import Alexnet
 from classi.Load import Load
 from classi.My_callbacks import My_callbacks
-from classi.KFold import KFold
-from classi.Bootstrap import Bootstrap
+from classi.Run_net import Run_net
 
 # --------------------------- Aggiunta ambiente virtuale tensorflow i path di Graphviz e CUPTI ------------------------
 os.environ["PATH"] += os.pathsep + 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0/extras/CUPTI/libx64'
@@ -16,25 +15,25 @@ os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
 augmented = 1 # fattore moltiplicativo per incrementare le immagini che passano attraverso la rete nel training (maggiore di
 # 1 solo se "augmented" è settato a 1)
-factor = 1
+factor = 6
 load = False
 num_epochs = 200
 batch = 128
 l1 = 'none'
 l2 = 'none'
 lr = 0.0001
-validation_method = 'bootstrap'
+validation_method = 'kfold' #bootstrap
 # Parametri kfold
-k = 8
+k = 10
 # Parametri per bootstrap
-n_patient_test = 5
+n_patient_test = 3
 boot_iter = 15
 activation = 'relu'
 optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID4_10_90_perc"
+slice_path = "ID2_10_90_perc"
 allview = False
 view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -69,7 +68,7 @@ file.write("Epoche: {}, Batch size: {}\n".format(num_epochs, batch))
 file.write("Learning rate decay:{}\n".format(False))
 if validation_method == 'bootstrap':
     file.write("Numero iterazioni bootstrap: {}\n".format(boot_iter))
-    file.write("Campioni di test estratti ad ogni fold: {}\n".format(n_patient_test))
+    file.write("Campioni di test estratti ad ogni iterazione: {}\n".format(n_patient_test))
 else:
     file.write("Numero Fold: {}\n".format(k))
 file.write("Data Augmentation: {}, fattore moltiplicativo: {}\n".format(augmented, factor))
@@ -116,41 +115,25 @@ alexnet = Alexnet(
 
 my_callbacks = My_callbacks(run_folder)
 # ---------------------------------------- Creazione istanza classe Kfold ----------------------------------------------
-
-if validation_method == 'bootstrap':
-    bootstrap = Bootstrap(
-        ID_paziente=ID_paziente,
-        label_paziente=label_paziente,
-        slices=slices,
-        labels=labels,
-        ID_paziente_slice=ID_paziente_slice,
-        num_epochs=num_epochs,
-        batch=batch,
-        factor=factor,
-        boot_iter=boot_iter,
-        n_patient_test=n_patient_test,
-        augmented=augmented,
-        alexnet=alexnet,
-        my_callbacks=my_callbacks,
-        run_folder=run_folder,
-        load=load)
-    bootstrap.bootstrap_method()
-else:
-    kfold = KFold(
-        ID_paziente=ID_paziente,
-        label_paziente=label_paziente,
-        slices=slices,
-        labels=labels,
-        ID_paziente_slice=ID_paziente_slice,
-        num_epochs=num_epochs,
-        batch=batch,
-        factor=factor,
-        k=k,
-        augmented=augmented,
-        alexnet=alexnet,
-        my_callbacks=my_callbacks,
-        run_folder=run_folder)
-    kfold.k_fold_cross_validation()
+run_net = Run_net(
+    validation_method = validation_method,
+    ID_paziente=ID_paziente,
+    label_paziente=label_paziente,
+    slices=slices,
+    labels=labels,
+    ID_paziente_slice=ID_paziente_slice,
+    num_epochs=num_epochs,
+    batch=batch,
+    factor=factor,
+    boot_iter=boot_iter,
+    k_iter = k,
+    n_patient_test=n_patient_test,
+    augmented=augmented,
+    alexnet=alexnet,
+    my_callbacks=my_callbacks,
+    run_folder=run_folder,
+    load=load)
+run_net.run()
 
 file = open(os.path.join(run_folder, "Parameters.txt"), "a")
 file.write("\nData e ora di fine simulazione: "  + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))

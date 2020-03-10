@@ -13,7 +13,6 @@
 # per costruire il set di training. Non è detto che tutti i campioni vengano estratti,
 # i campioni NON estratti dal set di partenza vanno a formare il set di TEST
 
-from keras.models import load_model
 from sklearn.utils import resample
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,16 +20,17 @@ import xlsxwriter
 import os
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
+from tensorflow.keras.preprocessing.image import array_to_img
 
 from classi.Slices import Slices
 from classi.Score import Score
 
 
-class Bootstrap():
+class Run_net():
 
-    def __init__(self, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, factor, boot_iter,
-                 n_patient_test, augmented, alexnet, my_callbacks, run_folder, load):
+    def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, factor, boot_iter,
+                 k_iter, n_patient_test, augmented, alexnet, my_callbacks, run_folder, load):
+        self.validation_method = validation_method,
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
 
@@ -42,6 +42,7 @@ class Bootstrap():
         self.batch = batch
         self.factor = factor
         self.boot_iter = boot_iter
+        self.k_iter = k_iter
         self.n_patient_test = n_patient_test
         self.augmented = augmented
 
@@ -70,43 +71,27 @@ class Bootstrap():
         self.specificity_paziente_his = []
         self.g_paziente_his = []
 
-    def bootstrap_method(self):
-        # Creazione di una lista di 125 indici, da 0 a 124
-        index = []
-        for i in range(self.ID_paziente.shape[0]):
-            index.append(i)
+    def run(self):
+
+        if self.validation_method[0] == 'bootstrap':
+            # Creazione di una lista di 125 indici, da 0 a 124
+            index = []
+            for i in range(self.ID_paziente.shape[0]):
+                index.append(i)
+            iter = self.boot_iter
+        else:
+            # Calcolo del numero di campioni per il set di validazione
+            num_val_samples = len(self.ID_paziente) // self.k_iter  # // si usa per approssimare al più piccolo
+            iter = self.k_iter
 
         first_iter = 0
-        # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
-        # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
-        # gli stessi  boot_iter set dal metodo bootstrap
-        np.random.seed(42)
-        for idx in range(self.boot_iter):
-            # ------------------------------------ DIVISIONE SET PER PAZIENTI -------------------------------------
-            print('\n ------------------------ Processing BOOTSTRAP FOLD #{} ------------------------'.format(idx + 1))
-            callbacks_list = self.my_callbacks.callbacks_list(idx)
-            # n_sample: numero di campioni da estrarre.
-            # replace -> se True, estrazione con reintroduzione
-            # Estrazione random degli indici di 15 pazienti con reintroduzione (potrebbero essere meno di 15 pazienti
-            # per effetto della reintroduzione)
-            test_set_index = resample(index, replace = True, n_samples = self.n_patient_test)
-            # Eliminazione degli indici duplicati dal test_set
-            test_set_index = self.remove(test_set_index)
-            # Creazione degli indici di training: il set di training è creato come la differenza tra il set completo e il
-            # test set
-            train_set_index = [x for x in index if x not in test_set_index]
-            # Conversione da lista ad array
-            test_set_index = np.asarray(test_set_index)
-            train_set_index = np.asarray(train_set_index)
-            print(test_set_index, len(test_set_index))
-            print(train_set_index, len(train_set_index), "\n")
+        for idx in range(iter):
+            if self.validation_method[0] == 'bootstrap':
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.bootstrap(idx, index)
+            else:
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.kfold(idx, num_val_samples)
 
-            paziente_val = self.ID_paziente[test_set_index]
-            lab_paziente_val = self.label_paziente[test_set_index]
-            paziente_train = self.ID_paziente[train_set_index]
-            lab_paziente_train = self.label_paziente[train_set_index]
-            print("Numero pazienti per la validazione: {}".format(paziente_val.shape))
-            print("Numero pazienti per il training: {}".format(paziente_train.shape))
+            self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train,idx)
 
             # --------------------------------------------- SLICE -----------------------------------------------------
             # Divisione slice in TRAINING e VALIDATION in base allo split dei pazienti: le slice di un paziente non possono
@@ -123,8 +108,6 @@ class Bootstrap():
 
             X_val, Y_val, true_label_val, ID_paziente_slice_val = create_slices.val()
             X_train, Y_train, true_label_train, ID_paziente_slice_train = create_slices.train()
-
-            self.write_excel(true_label_val, ID_paziente_slice_val, true_label_train, ID_paziente_slice_train, idx)
 
             print("Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
@@ -150,28 +133,22 @@ class Bootstrap():
             self.how_generator_work(test_datagen, X_val, ID_paziente_slice_val, 'validation')
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
-
-            if self.load == True:
-                model = load_model(os.path.join(self.run_folder, "model/model_{}.h5".format(idx)))
-                print('Caricato')
-            else:
-                # Costruzione del modello
-                model = self.alexnet.build_alexnet()
-                # Salvataggio struttura rete e parametri modello
-                if first_iter == 0:
-                    self.alexnet.save(self.run_folder, model)
-                    first_iter = 1
-                # Fit del modello
-                history = model.fit(train_generator,
-                                  steps_per_epoch = step_per_epoch,
-                                  epochs = self.num_epochs,
-                                  validation_data = validation_generator,
-                                  validation_steps = (X_val.shape[0] / self.batch),
-                                  callbacks = callbacks_list,
-                                  sample_weight = None,
-                                  verbose=0)
-                self.all_history.append(history)
-                model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)))
+            # Costruzione del modello
+            model = self.alexnet.build_alexnet()
+            # Salvataggio struttura rete e parametri modello
+            if first_iter == 0:
+                self.alexnet.save(self.run_folder, model)
+                first_iter = 1
+            # Fit del modello
+            history = model.fit(train_generator,
+                              steps_per_epoch = step_per_epoch,
+                              epochs = self.num_epochs,
+                              validation_data = validation_generator,
+                              validation_steps = (X_val.shape[0] / self.batch),
+                              callbacks = callbacks_list,
+                              verbose=0)
+            self.all_history.append(history)
+            model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)))
 
             # ---------------------------------------- SCORE SINGOLA FOLD ---------------------------------------------
             score = Score(X_test = X_val,
@@ -350,3 +327,60 @@ class Bootstrap():
                 break
         plt.tight_layout()
         plt.show()
+
+    def bootstrap(self, idx, index):
+        # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
+        # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
+        # gli stessi boot_iter set dal metodo bootstrap
+        np.random.seed(42)
+        # ------------------------------------ DIVISIONE SET PER PAZIENTI -------------------------------------
+        print('\n ------------------------ Processing BOOTSTRAP iter #{} ------------------------'.format(idx + 1))
+        callbacks_list = self.my_callbacks.callbacks_list(idx)
+        # n_sample: numero di campioni da estrarre.
+        # replace -> se True, estrazione con reintroduzione
+        # Estrazione random degli indici di 15 pazienti con reintroduzione (potrebbero essere meno di 15 pazienti
+        # per effetto della reintroduzione)
+        test_set_index = resample(index, replace = True, n_samples = self.n_patient_test)
+        # Eliminazione degli indici duplicati dal test_set
+        test_set_index = self.remove(test_set_index)
+        # Creazione degli indici di training: il set di training è creato come la differenza tra il set completo e il
+        # test set
+        train_set_index = [x for x in index if x not in test_set_index]
+        # Conversione da lista ad array
+        test_set_index = np.asarray(test_set_index)
+        train_set_index = np.asarray(train_set_index)
+        print(test_set_index, len(test_set_index))
+        print(train_set_index, len(train_set_index), "\n")
+
+        paziente_val = self.ID_paziente[test_set_index]
+        lab_paziente_val = self.label_paziente[test_set_index]
+        paziente_train = self.ID_paziente[train_set_index]
+        lab_paziente_train = self.label_paziente[train_set_index]
+        print("Numero pazienti per la validazione: {}".format(paziente_val.shape))
+        print("Numero pazienti per il training: {}".format(paziente_train.shape))
+
+        return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
+
+    def kfold(self, idx, num_val_samples):
+        callbacks_list = self.my_callbacks.callbacks_list(idx)
+        print('\n ------------------------ Processing KCROSSVAL fold #{} ------------------------'.format(idx + 1))
+        # ------------------------------------------- PAZIENTI --------------------------------------------------
+        # Si effettua la divisione dei set di training, validation e test sui PAZIENTI e NON sulle singole slice: questo per
+        # evitare che slice di uno stesso paziente siano sia nel set di training che nel set di test introducendo un bias
+        # Preparazione set di validazione: selezione dei pazienti dalla partizione kesima
+
+        paziente_val = self.ID_paziente[idx * num_val_samples: (idx + 1) * num_val_samples]
+        lab_paziente_val = self.label_paziente[idx * num_val_samples: (idx + 1) * num_val_samples]
+        # Preparazione set di training: selezione dei pazienti da tutte le altre partizioni (k-1 partizioni)
+        paziente_train = np.concatenate([self.ID_paziente[: idx * num_val_samples],
+                                         self.ID_paziente[(idx + 1) * num_val_samples:]],
+                                        axis = 0)
+        lab_paziente_train = np.concatenate([self.label_paziente[: idx * num_val_samples],
+                                             self.label_paziente[(idx + 1) * num_val_samples:]],
+                                             axis = 0)
+        print("Numero pazienti per la validazione: {}, pazienti da {} a {}".format(paziente_val.shape,
+                                                                                   idx * num_val_samples,
+                                                                                   (idx + 1) * num_val_samples))
+        print("Numero pazienti per il training: {}".format(paziente_train.shape))
+
+        return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list

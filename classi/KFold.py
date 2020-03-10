@@ -2,8 +2,10 @@
 import numpy as np
 import os
 import xlsxwriter
+import matplotlib.pyplot as plt
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
 
 from classi.Slices import Slices
 from classi.Score import Score
@@ -91,37 +93,34 @@ class KFold():
             print("Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
 
-            # ---------------------------------------------- MODELLO ---------------------------------------------------
-            # Costruzione del modello
-            model = self.alexnet.build_alexnet()
-
-            # Salvataggio struttura rete e parametri modello
-            if first_iter == 0:
-                self.alexnet.save(self.run_folder, model)
-                first_iter = 1
-
+            # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
             # Data augmentation
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, seed = 42)
                 step_per_epoch = int(X_train.shape[0] / self.batch) # ad ogni epoca si fa in modo che tutti i campioni di training passino
                 # per la rete
-                print(step_per_epoch)
+                print('Step per epoca: {}'.format(step_per_epoch))
             else:
-                train_datagen = ImageDataGenerator(
-                                                   rotation_range = 45,
+                train_datagen = ImageDataGenerator(rotation_range = 45,
                                                    width_shift_range = 0.2,
                                                    height_shift_range= 0.2,
                                                    shear_range = 0.2)
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True, seed = 42)
                 step_per_epoch = int(X_train.shape[0] / self.batch) * self.factor
                 print(step_per_epoch)
-
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True, seed = 42)
+
+            # ---------------------------------------------- MODELLO ---------------------------------------------------
+            # Costruzione del modello
+            model = self.alexnet.build_alexnet()
+            # Salvataggio struttura rete e parametri modello
+            if first_iter == 0:
+                self.alexnet.save(self.run_folder, model)
+                first_iter = 1
             # Fit del modello
-            history = model.fit_generator(
-                                          train_generator,
+            history = model.fit_generator(train_generator,
                                           steps_per_epoch = step_per_epoch,
                                           epochs = self.num_epochs,
                                           validation_data = validation_generator,
@@ -130,9 +129,9 @@ class KFold():
                                           verbose = 0)
             self.all_history.append(history)
             model.save(os.path.join(self.run_folder,"model/model_end_of_train_{}.h5".format(idx)))
+
             # ---------------------------------------- SCORE SINGOLA FOLD ---------------------------------------------
-            score = Score(
-                          X_test = X_val,
+            score = Score(X_test = X_val,
                           Y_test = true_label_val,
                           k = idx,
                           alexnet = model,
@@ -150,10 +149,7 @@ class KFold():
             val_acc_history = history.history['val_accuracy']
             val_loss_history = history.history['val_loss']
 
-            score.plot_loss_accuracy(loss_history,
-                                     val_loss_history,
-                                     acc_history,
-                                     val_acc_history)
+            score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history)
 
             print('\n ------------------ METRICHE SLICE E PAZIENTE ------------------')
             accuracy, precision, recall, f1_score, specificity, accuracy_paziente, precision_paziente, recall_paziente,\
@@ -235,17 +231,17 @@ class KFold():
 
     def write_excel(self, true_label_val, ID_paziente_slice_val, true_label_train, ID_paziente_slice_train, idx):
 
-        # Create an new Excel file and add a worksheet.
+        # Creazione di un nuovo file Excel e aggiunta di un foglio di lavoro
         workbook_val = xlsxwriter.Workbook(os.path.join(self.run_folder, "val_{}.xlsx".format(idx)))
         worksheet_val = workbook_val.add_worksheet()
         workbook_train = xlsxwriter.Workbook(os.path.join(self.run_folder, "train_{}.xlsx".format(idx)))
         worksheet_train = workbook_train.add_worksheet()
 
-        # Widen the first and second columns to make the text clearer.
+        # Allargamento della prima e seconda colonna
         worksheet_val.set_column('A:B', 20)
         worksheet_train.set_column('A:B', 20)
 
-        # Add a bold format to use to highlight cells.
+        # Aggiunta del formato grassetto
         bold_val = workbook_val.add_format({'bold': True})
         bold_train = workbook_train.add_format({'bold': True})
 
@@ -253,8 +249,7 @@ class KFold():
         worksheet_val.write('B1', 'Validation ID Paziente', bold_val)
         worksheet_train.write('A1', 'Train Label', bold_train)
         worksheet_train.write('B1', 'Train ID Paziente', bold_train)
-        print(true_label_val.shape)
-        print(ID_paziente_slice_val.shape)
+
         for i in range(true_label_val.shape[0]):
             worksheet_val.write(i + 1, 0, true_label_val[i, 0])
             worksheet_val.write(i + 1, 1, ID_paziente_slice_val[i, 0])
@@ -265,3 +260,27 @@ class KFold():
 
         workbook_val.close()
         workbook_train.close()
+
+    def how_generator_work(self, datagen, X, ID, name):
+
+        generator = datagen.flow(X, ID, batch_size = 64, shuffle = True, seed=42)
+        # Iterator restituisce un batch di immagini per ogni iterazione
+        i = 0
+        for X_batch, Y_batch in generator:
+            img_batch = X_batch
+            ID_batch = Y_batch
+            #print(img_batch.shape)
+            #print(ID_batch)
+
+            plt.figure(i, figsize=(12, 12))
+
+            for idx in range(img_batch.shape[0]):
+                plt.subplot(8, 8, idx + 1)
+                plt.axis('off')
+                image = img_batch[idx]
+                plt.imshow(array_to_img(image), cmap='gray')
+            i += 1
+            if i % 1 == 0:
+                break
+        plt.tight_layout()
+        plt.show()
