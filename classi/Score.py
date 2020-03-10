@@ -5,6 +5,7 @@ from sklearn.metrics import roc_curve
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import math as math
 
 
 class Score():
@@ -41,35 +42,55 @@ class Score():
         neg_true = tn + fp
         pos_true = tp + fn
 
-        print("True negative: {}\nFalse positive: {}\nTrue positive: {}\nFalse negative: {}\nTotali veri negativi:"
-              "{}\nTotali veri positivi: {}".format(tn, fp, tp, fn, neg_true, pos_true))
+        print("True negative: {}"
+              "\nFalse positive: {}"
+              "\nTrue positive: {}"
+              "\nFalse negative: {}"
+              "\nTotali veri negativi: {}"
+              "\nTotali veri positivi: {}".format(tn, fp, tp, fn, neg_true, pos_true))
 
         # accuracy: tp + tn / positivi veri + negativi veri -> quantifica il numero di volte che il classificatore ha
         # dato un risposta corretta (non consente di capire la distribuzione dei tp e tn)
         accuracy = (tp + tn) / (tp + tn + fp + fn)
 
-        # precision: tp / tp + fp -> quantifica quanti dei positivi predetti sono effettivamente positivi, risponde alla domanda
-        # "di tutti i campioni PREDETTI positivi quali erano veramente positivi?"
-        precision = tp / (tp + fp)
+        # Se nel set di test ci sono SOLO pazienti positivi (PFS maggiore uguale 11) o SOLO paziente negativi (PFS minore uguale 11 mesi)
+        # non ha senso calcolare gli score per singola classe, per questo vengono messi a nan
+        if pos_true != 0 and neg_true != 0:
+            # sensibilità/recall/true positive rate -> misura la frazione di positivi correttamente riconosciuta, risponde alla domanda:
+            # "di tutti i campioni VERAMENTE positivi quale percentuale è stata classificata correttamente?" e si calcola
+            # come il rapporto tra i positivi correttamente predetti e tutti i veri positivi
+            recall = tp / (tp + fn)
 
-        # sensibilità o recall -> misura la frazione di positivi correttamente riconosciuta, risponde alla domanda:
-        # "di tutti i campioni VERAMENTE positivi quale percentuale è stata classificata correttamente? "
-        recall = tp / (tp + fn)
+            # precision: tp / tp + fp -> quantifica quanti dei positivi predetti sono effettivamente positivi, risponde alla domanda
+            # "di tutti i campioni PREDETTI positivi quali erano veramente positivi?"
+            precision = tp / (tp + fp)
 
-        # f1_score è una media ponderata delle metriche Precision e Recall
-        f1_score = (2 * recall * precision) / (recall + precision)
+            # f1_score è una media ponderata delle metriche Precision e Recall - se anche solo una tra precisione e recall è
+            # bassa, l'f1-score sarà basso -
+            f1_score = (2 * recall * precision) / (recall + precision)
 
-        # specificità -> misura la frazione di negativi correttamente riconosciuta
-        specificity = tn / (tn + fp)
+            # specificità/true negative rate -> misura la frazione di negativi correttamente riconosciuta
+            specificity = tn / (tn + fp)
 
-        true_positive_rate = tp / (tp + fn)
-        false_positive_rate = fp / (tn + fp)
+            # Media geometrica delle accuratezze: radice quadrata delle recall calcolate per classe (non dipende dalla
+            # probabilità a priori)
+            g = math.sqrt(recall * specificity)
+        else:
+            print("Pazienti di una sola classe, gli score sulle singole classi vengono posti a nan")
+            recall = math.nan
+            precision = math.nan
+            f1_score = math.nan
+            specificity = math.nan
+            g = math.nan
 
-        print('\nAccuratezza: {}\nPrecisione: {}\nRecall: '
-              '{}\nSpecificità: {}\nF1-score: {}'.format(accuracy, precision, recall, specificity, f1_score))
+        print('\nAccuratezza: {}'
+              '\nPrecisione: {}'
+              '\nRecall: {}'
+              '\nSpecificità: {}'
+              '\nF1-score: {}'
+              '\nMedia delle accuratezze: {}'.format(accuracy, precision, recall, specificity, f1_score, g))
 
-        return accuracy, precision, recall, f1_score, specificity
-
+        return accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true
 
     def predictions(self):
         # ---------- Calcolo predizioni slice ------------
@@ -92,26 +113,30 @@ class Score():
 
         Y_pred = np.asarray(Y_pred)
 
-        accuracy, precision, recall, f1_score, specificity = self.metrics(Y_true, Y_pred)
+        accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred)
 
-        auc = self.roc_curve(predictions, Y_true)
+        if pos_true != 0 and neg_true != 0:
+            auc = self.roc_curve(predictions, Y_true)
+        else:
+            auc = math.nan
 
-        # 'a' open for writing, appending to the end of the file if it exists
+        # 'a' apertura del file in scrittura
         file = open(os.path.join(self.run_folder, "score.txt"), "a")
         file.write("\n-------------- FOLD: {} --------------".format(self.k))
-        file.write("\nScore slice:\nAccuratezza: {}\nPrecisione: {}\nRecall: "
-                   "{}\nF1_score: {}\nSpecificità: {}\nAUC: {}\n".format(accuracy,
-                                                                       precision,
-                                                                       recall,
-                                                                       f1_score,
-                                                                       specificity,
-                                                                       auc))
+        file.write("\nScore slice:\nAccuratezza: {}"
+                   "\nPrecisione: {}"
+                   "\nRecall: {}"
+                   "\nF1_score: {}"
+                   "\nSpecificità: {}"
+                   "\nMedia delle accuratezze: {}"
+                   "\nAUC: {}\n".format(accuracy, precision, recall, f1_score, specificity, g, auc))
         file.close()
 
-        accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente, specificity_paziente = self.predictions_pazienti(Y_pred)
-        return (accuracy, precision, recall, f1_score, specificity, accuracy_paziente, precision_paziente,
-                recall_paziente, f1_score_paziente, specificity_paziente)
+        accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
+        specificity_paziente, g_paziente = self.predictions_pazienti(Y_pred)
 
+        return (accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente,
+                recall_paziente, f1_score_paziente, specificity_paziente, g_paziente)
 
     def predictions_pazienti(self, Y_pred):
         # ----------- Metriche su pazienti ------------
@@ -147,18 +172,18 @@ class Score():
         pred_paziente_test = np.asarray(pred_paziente_test_list)
         # print('\n---------------------------------------------------\n')
         accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
-        specificity_paziente = self.metrics(self.label_paziente_test, pred_paziente_test)
+        specificity_paziente, g_paziente, pos_true_paziente, neg_true_paziente  = self.metrics(self.label_paziente_test, pred_paziente_test)
 
         file = open(os.path.join(self.run_folder, "score.txt"), "a")
-        file.write("\nScore paziente:\nAccuratezza_paz: {}\nPrecisione_paz: {}\nRecall_paz: {}\nF1_score_paz: "
-                    "{}\nSpecificità_paz: {}\n".format(
-                                                      accuracy_paziente,
-                                                      precision_paziente,
-                                                      recall_paziente,
-                                                      f1_score_paziente,
-                                                      specificity_paziente))
+        file.write("\nScore paziente:\nAccuratezza_paz: {}"
+                   "\nPrecisione_paz: {}"
+                   "\nRecall_paz: {}"
+                   "\nF1_score_paz: {}"
+                   "\nSpecificità_paz: {}"
+                   "\nMedia delle accuratezze_paz:  {}\n".format(accuracy_paziente, precision_paziente, recall_paziente,
+                                                    f1_score_paziente, specificity_paziente, g_paziente))
         file.close()
-        return accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente, specificity_paziente
+        return accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente, specificity_paziente, g_paziente
 
     def roc_curve(self, predictions, Y_true):
         x = np.linspace(0, 1, 10)

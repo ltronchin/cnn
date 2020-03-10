@@ -22,7 +22,7 @@ class Load():
         # shape -> descrive quante DIMENSIONI il tensore ha lungo ogni ASSE
         # ndim -> conta quanti ASSI ha il tensore. Scalare -> tensore 0D, vettore -> tensore 1D, matrice -> tensore 2D
 
-        info = pazienti['pazienti'] # salvataggio della struct pazienti in info
+        info = pazienti['pazienti_new'] # salvataggio della struct pazienti in info
         data = load['slices_resize_' + view][0] # salvataggio della struct slices in data
 
         self.data = data

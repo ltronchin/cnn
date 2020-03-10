@@ -34,7 +34,7 @@ optimiser = 'rmsprop'
 initializer = 'xavier'
 input_dim = (50, 50, 1)
 batch_norm = True
-slice_path = "ID2_10_90_perc"
+slice_path = "ID4_10_90_perc"
 allview = False
 view = 'layer'
 # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -78,7 +78,7 @@ file.close()
 
 # ------------------------------------------ Caricamento dati -----------------------------------------------
 # Creazione istanza della classe Load
-load = Load(path_pazienti = "D:/Download/data/pazienti.mat")
+load = Load(path_pazienti = "D:/Download/data/pazienti_new.mat")
 
 if allview == True:
     view = 'layer'

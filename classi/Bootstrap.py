@@ -61,12 +61,14 @@ class Bootstrap():
         self.recall_his = []
         self.f1_score_his = []
         self.specificity_his = []
+        self.g_his = []
 
         self.accuracy_paziente_his = []
         self.precision_paziente_his = []
         self.recall_paziente_his = []
         self.f1_score_paziente_his = []
         self.specificity_paziente_his = []
+        self.g_paziente_his = []
 
     def bootstrap_method(self):
         # Creazione di una lista di 125 indici, da 0 a 124
@@ -172,14 +174,14 @@ class Bootstrap():
                 model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)))
 
             # ---------------------------------------- SCORE SINGOLA FOLD ---------------------------------------------
-            score = Score(X_test=X_val,
-                          Y_test=true_label_val,
-                          k=idx,
-                          alexnet=model,
-                          run_folder=self.run_folder,
-                          paziente_test=paziente_val,
-                          ID_paziente_slice_test=ID_paziente_slice_val,
-                          label_paziente_test=lab_paziente_val)
+            score = Score(X_test = X_val,
+                          Y_test = true_label_val,
+                          k = idx,
+                          alexnet = model,
+                          run_folder = self.run_folder,
+                          paziente_test = paziente_val,
+                          ID_paziente_slice_test = ID_paziente_slice_val,
+                          label_paziente_test = lab_paziente_val)
 
             # Plot di accuratezza e loss per la singola fold
             # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò
@@ -193,20 +195,22 @@ class Bootstrap():
             score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history)
 
             print('\n ------------------ METRICHE SLICE E PAZIENTE ------------------')
-            accuracy, precision, recall, f1_score, specificity, accuracy_paziente, precision_paziente, recall_paziente, \
-            f1_score_paziente, specificity_paziente = score.predictions()
+            accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente, recall_paziente, \
+            f1_score_paziente, specificity_paziente, g_paziente = score.predictions()
 
             self.accuracy_his.append(accuracy)
             self.precision_his.append(precision)
             self.recall_his.append(recall)
             self.f1_score_his.append(f1_score)
             self.specificity_his.append(specificity)
+            self.g_his.append(g)
 
             self.accuracy_paziente_his.append(accuracy_paziente)
             self.precision_paziente_his.append(precision_paziente)
             self.recall_paziente_his.append(recall_paziente)
             self.f1_score_paziente_his.append(recall_paziente)
             self.specificity_paziente_his.append(specificity_paziente)
+            self.g_paziente_his.append(g_paziente)
 
             # Creazione liste dei valori di accuratezza e loss (per ogni epoca) per ogni fold
             self.all_acc_history.append(acc_history)  # contiene le liste dei valori di accuratezza per ogni fold
@@ -220,39 +224,47 @@ class Bootstrap():
         average_loss_history = [np.mean([x[i] for x in self.all_loss_history]) for i in range(self.num_epochs)]
         average_val_acc_history = [np.mean([x[i] for x in self.all_val_acc_history]) for i in range(self.num_epochs)]
         average_val_loss_history = [np.mean([x[i] for x in self.all_val_loss_history]) for i in range(self.num_epochs)]
+
         score = Score('', '', 'mean', '', self.run_folder, '', '', '')
+
         score.plot_loss_accuracy(average_loss_history,
                                  average_val_loss_history,
                                  average_acc_history,
                                  average_val_acc_history)
 
         # ------------------------ SLICE -------------------------
-        accuracy_average = np.mean([x for x in self.accuracy_his])
-        precision_average = np.mean([x for x in self.precision_his])
-        recall_average = np.mean([x for x in self.recall_his])
-        f1_score_average = np.mean([x for x in self.f1_score_his])
-        specificity_average = np.mean([x for x in self.specificity_his])
+        # nanmean: compute the arithmetic mean along the specified axis, ignoring NaNs
+        accuracy_average = np.nanmean([x for x in self.accuracy_his])
+        precision_average = np.nanmean([x for x in self.precision_his])
+        recall_average = np.nanmean([x for x in self.recall_his])
+        f1_score_average = np.nanmean([x for x in self.f1_score_his])
+        specificity_average = np.nanmean([x for x in self.specificity_his])
+        g_average = np.nanmean([x for x in self.g_his])
+
         print('\n ------------------ METRICHE MEDIE SLICE ------------------')
         print('\nAccuratezza: {}'
               '\nPrecisione: {}'
               '\nRecall: {}'
               '\nSpecificità: {}'
-              '\nF1-score: {}'.format(accuracy_average, precision_average, recall_average, specificity_average,
-                                      f1_score_average))
+              '\nF1-score: {}'
+              '\nMedia delle accuratezze: {}'.format(accuracy_average, precision_average, recall_average, specificity_average,
+                                      f1_score_average, g_average))
         # --------------------- PAZIENTI ------------------------
-        accuracy_paziente_average = np.mean([x for x in self.accuracy_paziente_his])
-        precision_paziente_average = np.mean([x for x in self.precision_paziente_his])
-        recall_paziente_average = np.mean([x for x in self.recall_paziente_his])
-        f1_score_paziente_average = np.mean([x for x in self.f1_score_paziente_his])
-        specificity_paziente_average = np.mean([x for x in self.specificity_paziente_his])
+        accuracy_paziente_average = np.nanmean([x for x in self.accuracy_paziente_his])
+        precision_paziente_average = np.nanmean([x for x in self.precision_paziente_his])
+        recall_paziente_average = np.nanmean([x for x in self.recall_paziente_his])
+        f1_score_paziente_average = np.nanmean([x for x in self.f1_score_paziente_his])
+        specificity_paziente_average = np.nanmean([x for x in self.specificity_paziente_his])
+        g_paziente_average = np.nanmean([x for x in self.g_paziente_his])
 
         print('\n ------------------ METRICHE MEDIE PAZIENTI ------------------')
         print('\nAccuratezza: {}'
               '\nPrecisione: {}'
               '\nRecall: {}'
               '\nSpecificità: {}'
-              '\nF1-score: {}'.format(accuracy_paziente_average, precision_paziente_average, recall_paziente_average,
-                                      specificity_paziente_average, f1_score_paziente_average))
+              '\nF1-score: {}'
+              '\nMedia delle accuratezze: {}'.format(accuracy_paziente_average, precision_paziente_average, recall_paziente_average,
+                                      specificity_paziente_average, f1_score_paziente_average, g_paziente_average))
 
         # Scrittura su file
         file = open(os.path.join(self.run_folder, "score.txt"), "a")
@@ -261,14 +273,18 @@ class Bootstrap():
                    "\nPrecisione: {}"
                    "\nRecall: {}"
                    "\nF1_score: {}"
-                   "\nSpecificità: {}\n".format(accuracy_average, precision_average, recall_average,
-                                                f1_score_average, specificity_average))
-        file.write("\nScore paziente:\nAccuratezza_paz: {}"
+                   "\nSpecificità: {}"
+                   "\nMedia delle accuratezze: {}\n".format(accuracy_average, precision_average, recall_average,
+                                                f1_score_average, specificity_average, g_average))
+        file.write("\nScore paziente:"
+                   "\nAccuratezza_paz: {}"
                    "\nPrecisione_paz: {}"
-                   "\nRecall_paz: {}\nF1_score_paz:{}"
-                   "\nSpecificità_paz: {}\n".format(accuracy_paziente_average, precision_paziente_average,
+                   "\nRecall_paz: {}"
+                   "\nF1_score_paz:{}"
+                   "\nSpecificità_paz: {}"
+                   "\nMedia delle accuratezze_paz: {}\n".format(accuracy_paziente_average, precision_paziente_average,
                                                     recall_paziente_average, f1_score_paziente_average,
-                                                    specificity_paziente_average))
+                                                    specificity_paziente_average, g_paziente_average))
         file.close()
 
     # Codice per eliminare duplicati da una lista
