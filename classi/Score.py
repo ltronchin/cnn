@@ -116,7 +116,16 @@ class Score():
         accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred)
 
         if pos_true != 0 and neg_true != 0:
-            auc = self.roc_curve(predictions, Y_true)
+            auc = self.roc_curve(predictions[:,1], Y_true)
+            # Se l'area sotto la curva ROC è di molto inferiore del 50% si ribaltano le etichette
+            if auc < 0.5:
+                print("\n ---- Ribalto etichette ---- \n")
+                Y_pred = []
+                for idx in range(predictions.shape[0]):
+                    Y_pred.append(np.argmin(predictions[idx]))
+                Y_pred = np.asarray(Y_pred)
+                accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred)
+                auc = self.roc_curve(predictions[:,0], Y_true)
         else:
             auc = math.nan
 
@@ -188,9 +197,9 @@ class Score():
     def roc_curve(self, predictions, Y_true):
         x = np.linspace(0, 1, 10)
         # Calcolo della curva ROC
-        fpr, tpr, thresholds = roc_curve(Y_true, predictions[:,1])
+        fpr, tpr, thresholds = roc_curve(Y_true, predictions)
         # Calcolo AUC
-        auc = roc_auc_score(Y_true, predictions[:,1])
+        auc = roc_auc_score(Y_true, predictions)
         print('AUC: %.3f' % auc)
         plt.plot(fpr, tpr,  color='b', label = 'AUC='+str(auc))
         plt.plot(x, x, 'k-')

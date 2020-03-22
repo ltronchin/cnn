@@ -72,7 +72,6 @@ class Run_net():
         self.g_paziente_his = []
 
     def run(self):
-
         if self.validation_method[0] == 'bootstrap':
             # Creazione di una lista di 125 indici, da 0 a 124
             index = []
@@ -85,8 +84,13 @@ class Run_net():
             iter = self.k_iter
 
         first_iter = 0
+        # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
+        # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
+        # gli stessi boot_iter set dal metodo bootstrap
+        np.random.seed(42)
         for idx in range(iter):
             if self.validation_method[0] == 'bootstrap':
+
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.bootstrap(idx, index)
             else:
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.kfold(idx, num_val_samples)
@@ -120,17 +124,22 @@ class Run_net():
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
                 train_datagen = ImageDataGenerator(rotation_range=45,
-                                                   width_shift_range=0.2,
-                                                   height_shift_range=0.2,
-                                                   shear_range=0.2)
+                                                   width_shift_range=0.20,
+                                                   height_shift_range=0.20,
+                                                   shear_range=25,
+                                                   zoom_range=0.25,
+                                                   horizontal_flip='true',
+                                                   fill_mode='constant',
+                                                   cval=0)
+
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
                 step_per_epoch = int(X_train.shape[0] / self.batch) * self.factor
                 print('Step per epoca: {}'.format(step_per_epoch))
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
 
-            self.how_generator_work(train_datagen, X_train, ID_paziente_slice_train, 'train')
-            self.how_generator_work(test_datagen, X_val, ID_paziente_slice_val, 'validation')
+            self.how_generator_work(train_datagen, X_train, ID_paziente_slice_train)
+            self.how_generator_work(test_datagen, X_val, ID_paziente_slice_val)
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
             # Costruzione del modello
@@ -185,7 +194,7 @@ class Run_net():
             self.accuracy_paziente_his.append(accuracy_paziente)
             self.precision_paziente_his.append(precision_paziente)
             self.recall_paziente_his.append(recall_paziente)
-            self.f1_score_paziente_his.append(recall_paziente)
+            self.f1_score_paziente_his.append(f1_score_paziente)
             self.specificity_paziente_his.append(specificity_paziente)
             self.g_paziente_his.append(g_paziente)
 
@@ -304,35 +313,33 @@ class Run_net():
         workbook_val.close()
         workbook_train.close()
 
-    def how_generator_work(self, datagen, X, ID, name):
-
-        generator = datagen.flow(X, ID, batch_size = 64, shuffle = True, seed=42)
+    def how_generator_work(self, datagen, X, ID):
+        im = X[1]
+        im = im.reshape((1,) + im.shape)
+        idd = ID[1]
+        generator = datagen.flow(im, idd, batch_size = 1, shuffle = True)
         # Iterator restituisce un batch di immagini per ogni iterazione
         i = 0
+        plt.figure(figsize=(12, 12))
         for X_batch, Y_batch in generator:
             img_batch = X_batch
             ID_batch = Y_batch
             #print(img_batch.shape)
             #print(ID_batch)
+            #image = img_batch[0]
+            #plt.imshow(array_to_img(image), cmap='gray')
 
-            plt.figure(i, figsize=(12, 12))
-
-            for idx in range(img_batch.shape[0]):
-                plt.subplot(8, 8, idx + 1)
-                plt.axis('off')
-                image = img_batch[idx]
-                plt.imshow(array_to_img(image), cmap='gray')
+            plt.subplot(8, 8, i + 1)
+            plt.axis('off')
+            image = img_batch[0]
+            plt.imshow(array_to_img(image), cmap='gray')
             i += 1
-            if i % 1 == 0:
+            if i % 64 == 0:
                 break
         plt.tight_layout()
         plt.show()
 
     def bootstrap(self, idx, index):
-        # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
-        # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
-        # gli stessi boot_iter set dal metodo bootstrap
-        np.random.seed(42)
         # ------------------------------------ DIVISIONE SET PER PAZIENTI -------------------------------------
         print('\n ------------------------ Processing BOOTSTRAP iter #{} ------------------------'.format(idx + 1))
         callbacks_list = self.my_callbacks.callbacks_list(idx)
