@@ -1,6 +1,5 @@
 import numpy as np
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
 
 
 class Slices():
@@ -32,22 +31,17 @@ class Slices():
                     Y_train.append(self.labels[idx])
                     ID_paziente_slice_train.append(self.ID_paziente_slice[idx])
 
-        # Conversione liste ad array
-        X_train = np.asarray(X_train)
-        Y_train = np.asarray(Y_train)
-        ID_paziente_slice_train = np.asarray(ID_paziente_slice_train)
-
-        # Si aggiunge un ASSE al tensore X_train portandolo ad essere un tensore 4D. La rete in ingresso vuole tensori
-        # di dimensione 4D con la forma: (samples dimension x row x column x channels) dove sample dimensione determina
-        # il numero di slice, r e c sono rispettivamente le righe e le colonne di ciascuna slice e channels è il
-        # numero di canali
-        X_train = X_train[:, :, :, np.newaxis]
+        # Conversione liste ad array -- la rete in ingresso vuole tensori di dimensione 4D con la forma:
+        # (samples dimension x row x column x channels) dove sample dimensione determina il numero di slice, r e c sono
+        # rispettivamente le righe e le colonne di ciascuna slice e channels è il numero di canali
+        X_train = np.array(X_train)
+        Y_train = np.array(Y_train)
+        ID_paziente_slice_train = np.array(ID_paziente_slice_train)
         Y_train_categ = to_categorical(Y_train, 2, dtype='uint8')
 
-        #plt.imshow(array_to_img(X_train[78]), cmap='gray')
         self.count_label_train(Y_train)
 
-        return X_train, Y_train_categ, Y_train, ID_paziente_slice_train
+        return X_train, Y_train_categ, Y_train
 
     def shuffle_in_unison(self, X_train, Y_train, ID_paziente_slice_train):
             n_elem = X_train.shape[0]
@@ -71,12 +65,9 @@ class Slices():
                     Y_val.append(self.labels[idx])
                     ID_paziente_slice_val.append(self.ID_paziente_slice[idx])
 
-        X_val = np.asarray(X_val)
-        Y_val = np.asarray(Y_val)
-        ID_paziente_slice_val = np.asarray(ID_paziente_slice_val)
-
-        # Si aggiunge un ASSE al tensore X_val portandolo ad essere un tensore 4D
-        X_val = X_val[:, :, :, np.newaxis]
+        X_val = np.array(X_val)
+        Y_val = np.array(Y_val)
+        ID_paziente_slice_val = np.array(ID_paziente_slice_val)
         Y_val_categ = to_categorical(Y_val, 2, dtype='uint8')
 
         self.count_label_val(Y_val)
@@ -97,13 +88,9 @@ class Slices():
                     ID_paziente_slice_test.append(self.ID_paziente_slice[idx])
 
         # Conversione da lista ad array
-        X_test = np.asarray(X_test)
-        Y_test = np.asarray(Y_test)
-        ID_paziente_slice_test = np.asarray(ID_paziente_slice_test)
-
-        # Si aggiunge un ASSE al tensore X_test portandolo ad essere un tensore 4D -> si aggiunge l'asse dei canali (1 canale
-        # essendo l'immagine in scala di grigi)
-        X_test = X_test[:, :, :, np.newaxis]
+        X_test = np.array(X_test)
+        Y_test = np.array(Y_test)
+        ID_paziente_slice_test = np.array(ID_paziente_slice_test)
         Y_test_categ = to_categorical(Y_test, 2, dtype='uint8')
 
         self.count_label_test(Y_test)
@@ -120,8 +107,8 @@ class Slices():
             else:
                 zero += 1
         print('------------- TRAIN -------------')
-        print('{} è presente {} volte'.format(1, one))
-        print('{} è presente {} volte'.format(0, zero))
+        print('[INFO] -- {} è presente {} volte'.format(1, one))
+        print('[INFO] -- {} è presente {} volte'.format(0, zero))
 
     # ------------------ Verifica del bilanciamento del set di validation  ------------------
     def count_label_val(self, Y_val):
@@ -133,8 +120,8 @@ class Slices():
             else:
                 zero += 1
         print('------------- VALIDATION -------------')
-        print('{} è presente {} volte'.format(1, one))
-        print('{} è presente {} volte'.format(0, zero))
+        print('[INFO] -- {} è presente {} volte'.format(1, one))
+        print('[INFO] -- {} è presente {} volte'.format(0, zero))
 
     # ------------------ Verifica del bilanciamento del set di test  ------------------
     def count_label_test(self, Y_test):
@@ -146,5 +133,5 @@ class Slices():
             else:
                 zero += 1
         print('------------- TEST -------------')
-        print('{} è presente {} volte'.format(1, one))
-        print('{} è presente {} volte'.format(0, zero))
+        print('[INFO] -- {} è presente {} volte'.format(1, one))
+        print('[INFO] -- {} è presente {} volte'.format(0, zero))

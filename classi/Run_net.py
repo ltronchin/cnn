@@ -28,8 +28,8 @@ from classi.Score import Score
 
 class Run_net():
 
-    def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, factor, boot_iter,
-                 k_iter, n_patient_test, augmented, alexnet, my_callbacks, run_folder, load):
+    def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
+                 k_iter, n_patient_test, augmented, alexnet, my_callbacks, run_folder, load, augmented_crop, data_aug):
         self.validation_method = validation_method,
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
@@ -40,11 +40,12 @@ class Run_net():
 
         self.num_epochs = num_epochs
         self.batch = batch
-        self.factor = factor
         self.boot_iter = boot_iter
         self.k_iter = k_iter
         self.n_patient_test = n_patient_test
         self.augmented = augmented
+        self.augmented_crop = augmented_crop
+        self.data_aug = data_aug
 
         self.alexnet = alexnet
         self.my_callbacks = my_callbacks
@@ -90,12 +91,11 @@ class Run_net():
         np.random.seed(42)
         for idx in range(iter):
             if self.validation_method[0] == 'bootstrap':
-
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.bootstrap(idx, index)
             else:
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.kfold(idx, num_val_samples)
 
-            self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train,idx)
+            self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train, idx)
 
             # --------------------------------------------- SLICE -----------------------------------------------------
             # Divisione slice in TRAINING e VALIDATION in base allo split dei pazienti: le slice di un paziente non possono
@@ -111,10 +111,10 @@ class Run_net():
                                    k = idx)
 
             X_val, Y_val, true_label_val, ID_paziente_slice_val = create_slices.val()
-            X_train, Y_train, true_label_train, ID_paziente_slice_train = create_slices.train()
+            X_train, Y_train, true_label_train = create_slices.train()
 
-            print("Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
-            print("Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
+            print("[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
+            print("[INFO] -- Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
 
             # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
             # Data augmentation
@@ -123,6 +123,10 @@ class Run_net():
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
+                if self.augmented_crop == 1:
+                    X_train, Y_train = self.data_aug.add_crop_slices(paziente_train, X_train, Y_train)
+                    print("\n[INFO] -- Numero slice per il training con augmentation: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
+
                 train_datagen = ImageDataGenerator(rotation_range=45,
                                                    width_shift_range=0.20,
                                                    height_shift_range=0.20,
@@ -133,13 +137,14 @@ class Run_net():
                                                    cval=0)
 
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
-                step_per_epoch = int(X_train.shape[0] / self.batch) * self.factor
-                print('Step per epoca: {}'.format(step_per_epoch))
+                step_per_epoch = int(X_train.shape[0] / self.batch)
+                print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
+
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
 
-            self.how_generator_work(train_datagen, X_train, ID_paziente_slice_train)
-            self.how_generator_work(test_datagen, X_val, ID_paziente_slice_val)
+            self.how_generator_work(train_datagen, X_train)
+            self.how_generator_work(test_datagen, X_val)
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
             # Costruzione del modello
@@ -281,7 +286,7 @@ class Run_net():
                 final_list.append(ele)
         return final_list
 
-    def write_excel(self, true_label_val, ID_paziente_slice_val, true_label_train, ID_paziente_slice_train, idx):
+    def write_excel(self, lab_paziente_val, paziente_val, lab_paziente_train, paziente_train, idx):
 
         # Creazione di un nuovo file Excel e aggiunta di un foglio di lavoro
         workbook_val = xlsxwriter.Workbook(os.path.join(self.run_folder, "val_{}.xlsx".format(idx)))
@@ -302,40 +307,37 @@ class Run_net():
         worksheet_train.write('A1', 'Train Label', bold_train)
         worksheet_train.write('B1', 'Train ID Paziente', bold_train)
 
-        for i in range(true_label_val.shape[0]):
-            worksheet_val.write(i + 1, 0, true_label_val[i, 0])
-            worksheet_val.write(i + 1, 1, ID_paziente_slice_val[i, 0])
+        for i in range(lab_paziente_val.shape[0]):
+            worksheet_val.write(i + 1, 0, lab_paziente_val[i, 0])
+            worksheet_val.write(i + 1, 1, paziente_val[i, 0])
 
-        for i in range(true_label_train.shape[0]):
-            worksheet_train.write(i + 1, 0, true_label_train[i, 0])
-            worksheet_train.write(i + 1, 1, ID_paziente_slice_train[i, 0])
+        for i in range(lab_paziente_train.shape[0]):
+            worksheet_train.write(i + 1, 0, lab_paziente_train[i, 0])
+            worksheet_train.write(i + 1, 1, paziente_train[i, 0])
 
         workbook_val.close()
         workbook_train.close()
 
-    def how_generator_work(self, datagen, X, ID):
-        im = X[1]
-        im = im.reshape((1,) + im.shape)
-        idd = ID[1]
-        generator = datagen.flow(im, idd, batch_size = 1, shuffle = True)
+    def how_generator_work(self, datagen, X):
+        #im = X[1]
+        #im = im.reshape((1,) + im.shape)
+        generator = datagen.flow(X, batch_size = 64, shuffle = True)
         # Iterator restituisce un batch di immagini per ogni iterazione
         i = 0
         plt.figure(figsize=(12, 12))
-        for X_batch, Y_batch in generator:
+        for X_batch in generator:
             img_batch = X_batch
-            ID_batch = Y_batch
-            #print(img_batch.shape)
-            #print(ID_batch)
-            #image = img_batch[0]
-            #plt.imshow(array_to_img(image), cmap='gray')
 
-            plt.subplot(8, 8, i + 1)
-            plt.axis('off')
-            image = img_batch[0]
-            plt.imshow(array_to_img(image), cmap='gray')
+            plt.figure(i, figsize=(12, 12))
+            for idx in range(img_batch.shape[0]):
+                plt.subplot(8, 8, idx + 1)
+                plt.axis('off')
+                image = img_batch[idx]
+                plt.imshow(array_to_img(image), cmap='gray')
             i += 1
-            if i % 64 == 0:
+            if i % 4 == 0:
                 break
+
         plt.tight_layout()
         plt.show()
 
@@ -363,8 +365,8 @@ class Run_net():
         lab_paziente_val = self.label_paziente[test_set_index]
         paziente_train = self.ID_paziente[train_set_index]
         lab_paziente_train = self.label_paziente[train_set_index]
-        print("Numero pazienti per la validazione: {}".format(paziente_val.shape))
-        print("Numero pazienti per il training: {}".format(paziente_train.shape))
+        print("[INFO] -- Numero pazienti per la validazione: {}".format(paziente_val.shape))
+        print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
 
@@ -385,9 +387,9 @@ class Run_net():
         lab_paziente_train = np.concatenate([self.label_paziente[: idx * num_val_samples],
                                              self.label_paziente[(idx + 1) * num_val_samples:]],
                                              axis = 0)
-        print("Numero pazienti per la validazione: {}, pazienti da {} a {}".format(paziente_val.shape,
+        print("[INFO] -- Numero pazienti per la validazione: {}, pazienti da {} a {}".format(paziente_val.shape,
                                                                                    idx * num_val_samples,
                                                                                    (idx + 1) * num_val_samples))
-        print("Numero pazienti per il training: {}".format(paziente_train.shape))
+        print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list

@@ -85,30 +85,31 @@ class Alexnet():
 
         if activation == 'leaky_relu':
             layer = layers.LeakyReLU(alpha=0.2)
+            print('[INFO] -- Funzione di attivazione: leaky_relu\n')
         else:
             layer = layers.Activation(activation)
-            print('Relu')
+            print('[INFO] -- Funzione di attivazione: relu\n')
         return layer
 
     def get_kernel_initializer(self, initializer):
         if initializer == 'xavier':
             kernel = GlorotNormal()
-            print('xavier')
+            print('[INFO] -- Inizializzazione pesi: xavier\n')
         elif initializer == 'he_uniform':
             kernel = he_uniform()
-            print('he_uniform')
+            print('[INFO] -- Inizializzazione pesi: he_uniform\n')
         else:
             kernel = RandomNormal(mean = 0., stddev=0.02)
-            print('random')
+            print('[INFO] -- Inizializzazione pesi: random\n')
         return kernel
 
     def get_opti(self, lr):
         if self.cnn_optimiser == 'adam':
             opti = Adam(lr = lr)
-            print('adam')
+            print('[INFO] -- Optimser: adam\n')
         elif self.cnn_optimiser == 'rmsprop':
             opti = RMSprop(lr = lr)
-            print('rmsprop')
+            print('[INFO] -- Optimiser: rmsprop\n')
         return opti
 
     # Python pickle module is used for serializing and de-serializing a Python object structure.Any object in Python can
@@ -119,7 +120,7 @@ class Alexnet():
 
     def save(self, run_folder, alexnet):
         #self.plot_model(run_folder, alexnet)
-        print('Plot disabled')
+        print('[INFO] -- Plot disabled\n')
 
     def plot_model(self, run_folder, alexnet):
         plot_model(alexnet, to_file = os.path.join(run_folder, "model.png"), show_shapes='True', expand_nested='True',

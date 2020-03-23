@@ -1,6 +1,7 @@
 import scipy.io as sio # libreria per importare i dati da Matlab
 import numpy as np
 import copy
+from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
 
 class Load():
 
@@ -37,8 +38,10 @@ class Load():
             ID_paziente.append(self.info[idx][0][0])
             lab_paziente.append(self.info[idx][0][1][0])
 
-        ID_paziente = np.asarray(ID_paziente)
-        lab_paziente = np.asarray(lab_paziente)
+        ID_paziente = np.array(ID_paziente)
+        lab_paziente = np.array(lab_paziente)
+
+        print("[INFO]-- Numero pazienti {}".format(ID_paziente.shape))
 
         ID_paziente_shuffle = copy.deepcopy(ID_paziente)
         lab_paziente_shuffle = copy.deepcopy(lab_paziente)
@@ -52,14 +55,16 @@ class Load():
         labels = []
         ID_paziente_slice = []
         for idx in range(self.data.shape[0]):
-            slices.append(self.data[idx][0])  # colonna delle immagini
-            ID_paziente_slice.append(self.data[idx][1])  # colonna ID_paziente
-            labels.append(self.data[idx][2][0])  # colonna delle labels
+            slices.append(img_to_array(self.data[idx][0]))  # immagini
+            ID_paziente_slice.append(self.data[idx][1])  # ID_paziente
+            labels.append(self.data[idx][2][0])  # delle labels
 
         # ------------------ Conversione da lista ad array numpy ------------------
-        slices = np.asarray(slices)
-        labels = np.asarray(labels)
-        ID_paziente_slice = np.asarray(ID_paziente_slice)
+        slices = np.array(slices)
+        labels = np.array(labels)
+        ID_paziente_slice = np.array(ID_paziente_slice)
+
+        print("[INFO]-- Numero e dimensione slice {}".format(slices.shape))
 
         return slices, labels, ID_paziente_slice
 
