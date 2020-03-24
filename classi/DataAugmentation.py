@@ -45,6 +45,7 @@ class DataAugmentation():
             # Selezione di una slice
             img = X_train[n]
             label = Y_train[n]
+            idd = ID_paziente_slice_train[n]
             # Ciclo per ruotare la slice: creo una lista di lunghezza N_rotate in cui ogni elemento contiene la slice
             # ruotata in senso antiorario di un angolo campionato in modo randomico tra 10 e 175
             for idx in range(0, N_rotate):
@@ -64,7 +65,7 @@ class DataAugmentation():
 
             img_aug_total.append(self.elastic_transform(img, 70, 5, random_state=None))
             label_aug_total.append(Y_train[n])
-            img_aug_total.append(self.crop_slices(ID_paziente_slice_train, n))
+            img_aug_total.append(self.crop_slices(idd))
             label_aug_total.append(Y_train[n])
 
             img_aug_total = np.array(img_aug_total)
@@ -110,20 +111,11 @@ class DataAugmentation():
     def flip_slice(self, img, datagen):
         return datagen.apply_transform(x = img, transform_parameters={'flip_horizontal':'true'})
 
-    def crop_slices(self, ID_paziente_slice_train, n):
-        X_crop = []
-        Y_crop = []
+    def crop_slices(self, idd):
 
-        for idx in range(ID_paziente_slice_train.shape[0]):
-            for i in range(self.slices.shape[0]):
-                if self.ID_paziente_slice[i] == ID_paziente_slice_train[idx]:
-                    X_crop.append(self.slices[idx])
-                    Y_crop.append(self.labels[idx])
-
-        X_crop = np.array(X_crop)
-        Y_crop = np.array(Y_crop)
-
-        img_crop = X_crop[n]
+        for idx in range(self.slices.shape[0]):
+            if self.ID_paziente_slice[idx] == idd:
+                img_crop = self.slices[idx]
 
         return img_crop
 
