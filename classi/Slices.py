@@ -41,7 +41,7 @@ class Slices():
 
         self.count_label_train(Y_train)
 
-        return X_train, Y_train_categ, Y_train
+        return X_train, Y_train_categ, Y_train, ID_paziente_slice_train
 
     def shuffle_in_unison(self, X_train, Y_train, ID_paziente_slice_train):
             n_elem = X_train.shape[0]
@@ -74,7 +74,7 @@ class Slices():
 
         return X_val, Y_val_categ, Y_val, ID_paziente_slice_val
 
-    # -------------------- Creazione set di Test ------------------------
+    # -------------------- Creazione set di Test ----------------------
     def test(self):
         X_test = []
         Y_test = []

@@ -111,7 +111,7 @@ class Run_net():
                                    k = idx)
 
             X_val, Y_val, true_label_val, ID_paziente_slice_val = create_slices.val()
-            X_train, Y_train, true_label_train = create_slices.train()
+            X_train, Y_train, true_label_train, ID_paziente_slice_train = create_slices.train()
 
             print("[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("[INFO] -- Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
@@ -124,17 +124,17 @@ class Run_net():
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
                 if self.augmented_crop == 1:
-                    X_train, Y_train = self.data_aug.add_crop_slices(paziente_train, X_train, Y_train)
+                    self.data_aug.augment_data(X_train, Y_train, ID_paziente_slice_train)
                     print("\n[INFO] -- Numero slice per il training con augmentation: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
 
-                train_datagen = ImageDataGenerator(rotation_range=45,
-                                                   width_shift_range=0.20,
-                                                   height_shift_range=0.20,
-                                                   shear_range=25,
-                                                   zoom_range=0.25,
-                                                   horizontal_flip='true',
-                                                   fill_mode='constant',
-                                                   cval=0)
+                train_datagen = ImageDataGenerator(rotation_range = 175,
+                                                   width_shift_range = 0.15,
+                                                   height_shift_range = 0.15,
+                                                   shear_range = 25,
+                                                   zoom_range = 0.25,
+                                                   horizontal_flip = 'true',
+                                                   fill_mode = 'constant',
+                                                   cval = 0)
 
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
                 step_per_epoch = int(X_train.shape[0] / self.batch)
@@ -335,7 +335,7 @@ class Run_net():
                 image = img_batch[idx]
                 plt.imshow(array_to_img(image), cmap='gray')
             i += 1
-            if i % 4 == 0:
+            if i % 1 == 0:
                 break
 
         plt.tight_layout()
