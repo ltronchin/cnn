@@ -5,6 +5,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, i
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 import matplotlib.pyplot as plt
+import copy
 
 class DataAugmentation():
 
@@ -38,59 +39,69 @@ class DataAugmentation():
         img_aug_total = []
         label_aug_total = []
 
-        datagen = ImageDataGenerator(fill_mode='constant', cval=0)
-
-        for n in range(0, 1):
-        #for n in range(X_train.shape[0]):
+        datagen = ImageDataGenerator(fill_mode = 'constant', cval=0)
+        n_clone = 0
+        idd_clone = 'start'
+        for n in range(0,200):
             # Selezione di una slice
             img = X_train[n]
             label = Y_train[n]
+
             idd = ID_paziente_slice_train[n]
+
+            if idd_clone != idd:
+                idd_clone = idd
+                n_clone = n
+
+            print("Numero slice: {}".format(n))
+            print("Numero prima slice paziente: {}".format(n_clone))
             # Ciclo per ruotare la slice: creo una lista di lunghezza N_rotate in cui ogni elemento contiene la slice
             # ruotata in senso antiorario di un angolo campionato in modo randomico tra 10 e 175
             for idx in range(0, N_rotate):
-                img_rotate_list.append(self.rotate_slice(img, datagen))
-                img_aug_total.append(img_rotate_list[idx])
+                img_rotate = (self.rotate_slice(img, datagen))
+                img_rotate_list.append(img_rotate)
+                img_aug_total.append(img_rotate)
                 label_aug_total.append(Y_train[n])
                 # Per ogni slice ruotata si applicano flip, shear e zoom
                 for idx_rot in range(0, N_zoom):
-                    img_aug_total.append(self.zoom_slice(img_rotate_list[idx], datagen))
+                    img_aug_total.append(self.zoom_slice(img_rotate, datagen))
                     label_aug_total.append(Y_train[n])
                 for idx_rot in range(0, N_shear):
-                    img_aug_total.append(self.shear_slice(img_rotate_list[idx], datagen))
+                    img_aug_total.append(self.shear_slice(img_rotate, datagen))
                     label_aug_total.append(Y_train[n])
 
-                img_aug_total.append(self.flip_slice(img_rotate_list[idx], datagen))
+                img_aug_total.append(self.flip_slice(img_rotate, datagen))
                 label_aug_total.append(Y_train[n])
 
             img_aug_total.append(self.elastic_transform(img, 70, 5, random_state=None))
             label_aug_total.append(Y_train[n])
-            img_aug_total.append(self.crop_slices(idd))
+            img_aug_total.append(self.crop_slices(idd, n, n_clone))
             label_aug_total.append(Y_train[n])
 
-            img_aug_total = np.array(img_aug_total)
-            label_aug_total = np.array(label_aug_total)
-
+            plt.figure(figsize=(12,12))
             plt.subplot(2, 3, 1)
             plt.imshow(array_to_img(img), cmap='gray')
 
             plt.subplot(2, 3, 2)
-            plt.imshow(array_to_img(img_aug_total[0]), cmap='gray')
+            plt.imshow(array_to_img(img_aug_total[0+n*6]), cmap='gray')
 
             plt.subplot(2, 3, 2)
-            plt.imshow(array_to_img(img_aug_total[1]), cmap='gray')
+            plt.imshow(array_to_img(img_aug_total[1+n*6]), cmap='gray')
 
             plt.subplot(2, 3, 3)
-            plt.imshow(array_to_img(img_aug_total[2]), cmap='gray')
+            plt.imshow(array_to_img(img_aug_total[2+n*6]), cmap='gray')
 
             plt.subplot(2, 3, 4)
-            plt.imshow(array_to_img(img_aug_total[3]), cmap='gray')
+            plt.imshow(array_to_img(img_aug_total[3+n*6]), cmap='gray')
 
             plt.subplot(2, 3, 5)
-            plt.imshow(array_to_img(img_aug_total[4]), cmap='gray')
+            plt.imshow(array_to_img(img_aug_total[4+n*6]), cmap='gray')
 
             plt.subplot(2, 3, 6)
-            plt.imshow(array_to_img(img_aug_total[5]), cmap='gray')
+            plt.imshow(array_to_img(img_aug_total[5+n*6]), cmap='gray')
+
+        img_aug_total = np.array(img_aug_total)
+        label_aug_total = np.array(label_aug_total)
 
     def rotate_slice(self, img, datagen):
         # theta: angolo (in senso antiorario), campionato in modo randomico da una distribuzione uniforme con
@@ -111,11 +122,29 @@ class DataAugmentation():
     def flip_slice(self, img, datagen):
         return datagen.apply_transform(x = img, transform_parameters={'flip_horizontal':'true'})
 
-    def crop_slices(self, idd):
+    def crop_slices(self, idd, n, n_clone):
 
-        for idx in range(self.slices.shape[0]):
+        idx = 0
+        find = 'not_find'
+        while (idx <= self.slices.shape[0] and find != 'find'):
+            # Paziente trovato, ora bisogno ricercare la slice corretta per quel paziente
+            # idx -- indice sui pazienti
             if self.ID_paziente_slice[idx] == idd:
-                img_crop = self.slices[idx]
+                find = 'find'
+
+                # Se n = n_clone si deve selezionare la prima slice del nuovo ID paziente
+                if n == n_clone:
+                    img_crop = self.slices[idx]
+                    idd_crop = self.ID_paziente_slice[idx]
+                # Se l'if non è verificato la slice da selezionare non è la prima -- si scorrono le slice
+                else:
+                    img_crop = self.slices[idx + (n - n_clone)]
+                    idd_crop =self.ID_paziente_slice[idx + (n - n_clone)]
+
+            idx += 1
+
+        print("idd:{}".format(idd))
+        print("idd_crop:{}".format(idd_crop))
 
         return img_crop
 
