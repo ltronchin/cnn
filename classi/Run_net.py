@@ -29,7 +29,7 @@ from classi.Score import Score
 class Run_net():
 
     def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
-                 k_iter, n_patient_test, augmented, alexnet, my_callbacks, run_folder, load, augmented_crop, data_aug):
+                 k_iter, n_patient_test, augmented, alexnet, my_callbacks, run_folder, load, data_aug):
         self.validation_method = validation_method,
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
@@ -44,7 +44,6 @@ class Run_net():
         self.k_iter = k_iter
         self.n_patient_test = n_patient_test
         self.augmented = augmented
-        self.augmented_crop = augmented_crop
         self.data_aug = data_aug
 
         self.alexnet = alexnet
@@ -113,32 +112,83 @@ class Run_net():
             X_val, Y_val, true_label_val, ID_paziente_slice_val = create_slices.val()
             X_train, Y_train, true_label_train, ID_paziente_slice_train = create_slices.train()
 
-            print("[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
+            print("\n[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("[INFO] -- Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
 
+
             # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
+
             # Data augmentation
+
+            # Creazione slice trasformate per la corrente iterazione -- per ogni slice si applicano 7 trasformazioni (vedi
+            # DataAugmentation per maggiori info).
+            # Il metodo restituisce:
+            #
+            # X_aug: insieme delle slice trasformate
+            # Y_aug: etichette delle slice trasformate
+            # idd_aug: id delle slice trasformate
+
+            # Total_augmented_slice rappresenta il numero di slice che si vogliono selezionare per espandere il dataset:
+            # queste slice vengono campionate in modo randomico da X_aug facendo in modo che per ogni paziente vengano
+            # campionate lo stesso numero di "nuove" slice
+
+            count = 0
+            total_augmented_slice = 500
+            augmented_slice_per_patient = total_augmented_slice//paziente_train.shape[0]
+            print("\n[INFO] -- numero di slice da aggiungere per paziente per arrivare a {}: {}".format(total_augmented_slice, augmented_slice_per_patient))
+
+            number_of_slice_per_patient = []
+
+            X_train_singleidd = []
+            Y_train_singleidd = []
+            ID_paziente_slice_train_singleidd = []
+
+            for n in range(0,1):
+                for idx in range(ID_paziente_slice_train.shape[0]):
+                    if ID_paziente_slice_train[idx] == paziente_train[n]:
+                        X_train_singleidd.append(X_train[idx])
+                        Y_train_singleidd.append(true_label_train[idx])
+                        ID_paziente_slice_train_singleidd.append(ID_paziente_slice_train[idx])
+                        count += 1
+
+                number_of_slice_per_patient.append(count)
+                count = 0
+                print("\n[INFO] -- numero di slice per paziente {}: {}".format(n,number_of_slice_per_patient[n]))
+
+                X_train_singleidd = np.array(X_train_singleidd)
+                Y_train_singleidd = np.array(Y_train_singleidd)
+                ID_paziente_slice_train_singleidd = np.array(ID_paziente_slice_train_singleidd)
+                X_aug_singleidd, Y_aug_singleidd, idd_aug_singleidd = self.data_aug.augment_data(X_train_singleidd, Y_train_singleidd, ID_paziente_slice_train_singleidd, augmented_slice_per_patient, n)
+                #print("\n[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug_singleidd.shape, Y_aug_singleidd.shape, idd_aug_singleidd))
+
+                if n == 0:
+                    X_aug = X_aug_singleidd
+                    Y_aug = Y_aug_singleidd
+                    idd_aug = idd_aug_singleidd
+                else:
+                    X_aug = np.concatenate((X_aug, X_aug_singleidd), axis=0)
+                    Y_aug = np.concatenate((Y_aug, Y_aug_singleidd), axis=0)
+                    idd_aug = np.concatenate((idd_aug, idd_aug_singleidd), axis=0)
+
+                print("[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug.shape, Y_aug.shape, idd_aug.shape))
+                X_train_singleidd = []
+                Y_train_singleidd = []
+                ID_paziente_slice_train_singleidd = []
+
+            print("\n[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug.shape, Y_aug.shape, idd_aug.shape))
+
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
-                if self.augmented_crop == 1:
-                    self.data_aug.augment_data(X_train, Y_train, ID_paziente_slice_train)
-                    print("\n[INFO] -- Numero slice per il training con augmentation: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
-
-                train_datagen = ImageDataGenerator(rotation_range = 175,
-                                                   width_shift_range = 0.15,
-                                                   height_shift_range = 0.15,
-                                                   shear_range = 25,
-                                                   zoom_range = 0.25,
-                                                   horizontal_flip = 'true',
+                train_datagen = ImageDataGenerator(rotation_range = 45,
                                                    fill_mode = 'constant',
                                                    cval = 0)
-
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
                 step_per_epoch = int(X_train.shape[0] / self.batch)
-                print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
+
+            print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
 
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
@@ -155,12 +205,12 @@ class Run_net():
                 first_iter = 1
             # Fit del modello
             history = model.fit(train_generator,
-                              steps_per_epoch = step_per_epoch,
-                              epochs = self.num_epochs,
-                              validation_data = validation_generator,
-                              validation_steps = (X_val.shape[0] / self.batch),
-                              callbacks = callbacks_list,
-                              verbose=0)
+                                steps_per_epoch = step_per_epoch,
+                                epochs = self.num_epochs,
+                                validation_data = validation_generator,
+                                validation_steps = (X_val.shape[0] / self.batch),
+                                callbacks = callbacks_list,
+                                verbose=0)
             self.all_history.append(history)
             model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)))
 
@@ -393,3 +443,11 @@ class Run_net():
         print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
+
+    #def generator_two_img(X1, X2, y, batch_size):
+    #   genX1 = gen.flow(X1, y, batch_size = batch_size, seed=1)
+    #   genX2 = gen.flow(X2, y, batch_size = batch_size, seed=1)
+    #    while True:
+    #        X1i = genX1.next()
+    #        X2i = genX2.next()
+    #        yield [X1i[0], X2i[0]], X1i[1]

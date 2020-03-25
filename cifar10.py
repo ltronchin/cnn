@@ -56,8 +56,10 @@ alexnet = Alexnet(input_dim = input_dim,
                   batch_norm = batch_norm)
 
 train_datagen = ImageDataGenerator(rotation_range=45,
-                                    width_shift_range=0.1,
-                                    height_shift_range=0.1,
+                                    #width_shift_range = 0.15,
+                                    #height_shift_range = 0.15,
+                                    #shear_range = 25,
+                                    #zoom_range = 0.25,
                                     shear_range=0.1)
 
 train_generator = train_datagen.flow(x_train, y_train, batch_size=64, shuffle=True)

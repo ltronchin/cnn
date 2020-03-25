@@ -14,7 +14,6 @@ os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
 augmented = 1
-augmented_crop = 1
 load = False
 num_epochs = 500
 batch = 128
@@ -76,7 +75,6 @@ for id in slice_path_list:
     else:
         file.write("Numero Fold: {}\n".format(k))
     file.write("Data Augmentation: {}\n".format(augmented))
-    file.write("Aggiunta immagini crop {}\n".format(augmented_crop))
     file.write("Data e ora di inizio simulazione: " + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     file.close()
 
@@ -137,7 +135,6 @@ for id in slice_path_list:
                       my_callbacks=my_callbacks,
                       run_folder=run_folder,
                       load=load,
-                      augmented_crop = augmented_crop,
                       data_aug = data_aug)
     run_net.run()
 
