@@ -29,7 +29,7 @@ from classi.Score import Score
 class Run_net():
 
     def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
-                 k_iter, n_patient_test, augmented, alexnet, my_callbacks, run_folder, load, data_aug):
+                 k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load, data_aug):
         self.validation_method = validation_method,
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
@@ -44,6 +44,7 @@ class Run_net():
         self.k_iter = k_iter
         self.n_patient_test = n_patient_test
         self.augmented = augmented
+        self.fill_mode = fill_mode
         self.data_aug = data_aug
 
         self.alexnet = alexnet
@@ -73,10 +74,11 @@ class Run_net():
 
     def run(self):
         if self.validation_method[0] == 'bootstrap':
-            # Creazione di una lista di 125 indici, da 0 a 124
+            # Creazione di una lista di indici quanti sono il numero di pazienti
             index = []
             for i in range(self.ID_paziente.shape[0]):
                 index.append(i)
+            # boot_iter contiene il numero di iterazioni da effettuare per il metodo bootstrap
             iter = self.boot_iter
         else:
             # Calcolo del numero di campioni per il set di validazione
@@ -86,7 +88,7 @@ class Run_net():
         first_iter = 0
         # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
         # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
-        # gli stessi boot_iter set dal metodo bootstrap
+        # le stesse iterazioni dal metodo bootstrap
         np.random.seed(42)
         for idx in range(iter):
             if self.validation_method[0] == 'bootstrap':
@@ -94,6 +96,7 @@ class Run_net():
             else:
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.kfold(idx, num_val_samples)
 
+            # Chiamata per la creazione di un foglio excel che mostra la suddivisione dei pazienti in training e test
             self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train, idx)
 
             # --------------------------------------------- SLICE -----------------------------------------------------
@@ -115,85 +118,48 @@ class Run_net():
             print("\n[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("[INFO] -- Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
 
-
             # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
-
             # Data augmentation
-
-            # Creazione slice trasformate per la corrente iterazione -- per ogni slice si applicano 7 trasformazioni (vedi
-            # DataAugmentation per maggiori info).
-            # Il metodo restituisce:
-            #
-            # X_aug: insieme delle slice trasformate
-            # Y_aug: etichette delle slice trasformate
-            # idd_aug: id delle slice trasformate
-
-            # Total_augmented_slice rappresenta il numero di slice che si vogliono selezionare per espandere il dataset:
-            # queste slice vengono campionate in modo randomico da X_aug facendo in modo che per ogni paziente vengano
-            # campionate lo stesso numero di "nuove" slice
-
-            count = 0
-            total_augmented_slice = 500
-            augmented_slice_per_patient = total_augmented_slice//paziente_train.shape[0]
-            print("\n[INFO] -- numero di slice da aggiungere per paziente per arrivare a {}: {}".format(total_augmented_slice, augmented_slice_per_patient))
-
-            number_of_slice_per_patient = []
-
-            X_train_singleidd = []
-            Y_train_singleidd = []
-            ID_paziente_slice_train_singleidd = []
-
-            for n in range(0,1):
-                for idx in range(ID_paziente_slice_train.shape[0]):
-                    if ID_paziente_slice_train[idx] == paziente_train[n]:
-                        X_train_singleidd.append(X_train[idx])
-                        Y_train_singleidd.append(true_label_train[idx])
-                        ID_paziente_slice_train_singleidd.append(ID_paziente_slice_train[idx])
-                        count += 1
-
-                number_of_slice_per_patient.append(count)
-                count = 0
-                print("\n[INFO] -- numero di slice per paziente {}: {}".format(n,number_of_slice_per_patient[n]))
-
-                X_train_singleidd = np.array(X_train_singleidd)
-                Y_train_singleidd = np.array(Y_train_singleidd)
-                ID_paziente_slice_train_singleidd = np.array(ID_paziente_slice_train_singleidd)
-                X_aug_singleidd, Y_aug_singleidd, idd_aug_singleidd = self.data_aug.augment_data(X_train_singleidd, Y_train_singleidd, ID_paziente_slice_train_singleidd, augmented_slice_per_patient, n)
-                #print("\n[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug_singleidd.shape, Y_aug_singleidd.shape, idd_aug_singleidd))
-
-                if n == 0:
-                    X_aug = X_aug_singleidd
-                    Y_aug = Y_aug_singleidd
-                    idd_aug = idd_aug_singleidd
-                else:
-                    X_aug = np.concatenate((X_aug, X_aug_singleidd), axis=0)
-                    Y_aug = np.concatenate((Y_aug, Y_aug_singleidd), axis=0)
-                    idd_aug = np.concatenate((idd_aug, idd_aug_singleidd), axis=0)
-
-                print("[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug.shape, Y_aug.shape, idd_aug.shape))
-                X_train_singleidd = []
-                Y_train_singleidd = []
-                ID_paziente_slice_train_singleidd = []
-
-            print("\n[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug.shape, Y_aug.shape, idd_aug.shape))
+            total_expand_slice = 15000
 
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
                 step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
-                train_datagen = ImageDataGenerator(rotation_range = 45,
-                                                   fill_mode = 'constant',
-                                                   cval = 0)
-                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
-                step_per_epoch = int(X_train.shape[0] / self.batch)
+                # Chiamata alla funzione per l'ESPANSIONE manuale del dataset
+                # X_aug, Y_aug = self.expand_dataset(total_expand_slice, paziente_train, X_train, true_label_train, ID_paziente_slice_train)
+                # print("\n[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}".format(X_aug.shape, Y_aug.shape))
+                # X_train_aug = np.concatenate((X_train, X_aug), axis=0)
+                # Y_train_aug = np.concatenate((Y_train, Y_aug), axis=0)
+                # print("[INFO] -- slice per il training della rete: {}, label {}".format(X_train_aug.shape, Y_train_aug.shape))
 
-            print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
+                train_datagen = ImageDataGenerator(rotation_range = 45,
+                                                   width_shift_range = 0.10,
+                                                   height_shift_range = 0.10,
+                                                   shear_range = 30,
+                                                   zoom_range = 0.2,
+                                                   horizontal_flip = 'true',
+                                                   fill_mode = self.fill_mode,
+                                                   cval = 0)
+
+                train_datagen_elastic = ImageDataGenerator(preprocessing_function=lambda x: self.data_aug.elastic_transform(x, [30,40], 5, random_state=None),
+                                                           fill_mode=self.fill_mode,
+                                                           cval=0)
+
+                train_generator = self.multiple_generator(train_datagen, train_datagen_elastic, X_train, Y_train)
+
+                #train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
+                print(self.batch)
+                print(X_train.shape[0])
+                step_per_epoch = X_train.shape[0] // (self.batch * 2)
+                print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
 
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
 
             self.how_generator_work(train_datagen, X_train)
+            self.how_generator_work(train_datagen_elastic, X_train)
             self.how_generator_work(test_datagen, X_val)
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
@@ -444,10 +410,67 @@ class Run_net():
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
 
-    #def generator_two_img(X1, X2, y, batch_size):
-    #   genX1 = gen.flow(X1, y, batch_size = batch_size, seed=1)
-    #   genX2 = gen.flow(X2, y, batch_size = batch_size, seed=1)
-    #    while True:
-    #        X1i = genX1.next()
-    #        X2i = genX2.next()
-    #        yield [X1i[0], X2i[0]], X1i[1]
+    def multiple_generator(self, train_datagen, train_datagen_clone, X_train, label):
+
+        train_generator = train_datagen.flow(X_train, label, batch_size= self.batch, shuffle = True, seed=42)
+        train_generator_clone = train_datagen_clone.flow(X_train, label, batch_size = self.batch, shuffle = True, seed=42)
+
+        while True:
+            X_train = train_generator.next()
+            X_train_clone = train_generator_clone.next()
+            #yield np.concatenate((X_train[0], X_train_clone[0]), axis=0), np.concatenate((X_train[1], X_train_clone[1]), axis=0)
+            yield [X_train[0], X_train_clone[0]], X_train[1]
+
+    def expand_dataset(self, total_augmented_slice, paziente_train, X_train, true_label_train, ID_paziente_slice_train):
+        # Creazione slice trasformate per la corrente iterazione -- per ogni slice si applicano 7 trasformazioni (vedi
+        # DataAugmentation per maggiori info).
+        # Il metodo restituisce:
+        #
+        # X_aug: insieme delle slice trasformate
+        # Y_aug: etichette delle slice trasformate
+        # idd_aug: id delle slice trasformate
+
+        # Total_augmented_slice rappresenta il numero di slice che si vogliono selezionare per espandere il dataset:
+        # queste slice vengono campionate in modo randomico da X_aug facendo in modo che per ogni paziente vengano
+        # campionate lo stesso numero di "nuove" slice
+        count = 0
+        augmented_slice_per_patient = total_augmented_slice // paziente_train.shape[0]
+        print("\n[INFO] -- numero di slice da aggiungere per paziente per arrivare a {}: {}".format(total_augmented_slice,
+                                                                                                  augmented_slice_per_patient))
+        number_of_slice_per_patient = []
+
+        X_train_singleidd = []
+        Y_train_singleidd = []
+        ID_paziente_slice_train_singleidd = []
+
+        for n in range(0, paziente_train.shape[0]):
+            for idx in range(ID_paziente_slice_train.shape[0]):
+                if ID_paziente_slice_train[idx] == paziente_train[n]:
+                    X_train_singleidd.append(X_train[idx])
+                    Y_train_singleidd.append(true_label_train[idx])
+                    ID_paziente_slice_train_singleidd.append(ID_paziente_slice_train[idx])
+                    count += 1
+
+            number_of_slice_per_patient.append(count)
+            count = 0
+            print("\n[INFO] -- numero di slice per paziente {}: {}".format(n, number_of_slice_per_patient[n]))
+            X_train_singleidd = np.array(X_train_singleidd)
+            Y_train_singleidd = np.array(Y_train_singleidd)
+            ID_paziente_slice_train_singleidd = np.array(ID_paziente_slice_train_singleidd)
+            X_aug_singleidd, Y_aug_singleidd, idd_aug_singleidd = self.data_aug.augment_data(X_train_singleidd, Y_train_singleidd,
+                                                                                             ID_paziente_slice_train_singleidd,
+                                                                                             augmented_slice_per_patient,
+                                                                                             n)
+            if n == 0:
+                X_aug = X_aug_singleidd
+                Y_aug = Y_aug_singleidd
+                idd_aug = idd_aug_singleidd
+            else:
+                X_aug = np.concatenate((X_aug, X_aug_singleidd), axis=0)
+                Y_aug = np.concatenate((Y_aug, Y_aug_singleidd), axis=0)
+                idd_aug = np.concatenate((idd_aug, idd_aug_singleidd), axis=0)
+            X_train_singleidd = []
+            Y_train_singleidd = []
+            ID_paziente_slice_train_singleidd = []
+            print("[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug.shape, Y_aug.shape, idd_aug.shape))
+        return X_aug, Y_aug

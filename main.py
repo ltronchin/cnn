@@ -14,6 +14,7 @@ os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
 augmented = 1
+fill_mode_list = ['constant', 'reflect', 'nearest']
 load = False
 num_epochs = 500
 batch = 128
@@ -33,11 +34,10 @@ input_dim = (64, 64, 1)
 batch_norm = True
 allview = False
 view = 'layer'
-slice_path_list = ["ID8_64x64_2080rowcolumn_no_crop"]
+slice_path_no_crop= "ID8_64x64_2080rowcolumn_no_crop"
 slice_path_crop = "ID8_64x64_2080rowcolumn"
 
-for id in slice_path_list:
-    slice_path = id
+for fill_mode in fill_mode_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
     model = 'CNN_Alexnet'
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -51,7 +51,7 @@ for id in slice_path_list:
         os.makedirs(os.path.join(run_folder, 'plot'))
 
     file = open(os.path.join(run_folder, "Parameters.txt"), "a")
-    file.write("Dataset: {}\n".format(slice_path))
+    file.write("Dataset: {}\n".format(slice_path_crop))
     if allview == True:
         file.write("Allview: {}\n".format(allview))
     else:
@@ -75,6 +75,7 @@ for id in slice_path_list:
     else:
         file.write("Numero Fold: {}\n".format(k))
     file.write("Data Augmentation: {}\n".format(augmented))
+    file.write("Fill mode: {}\n".format(fill_mode))
     file.write("Data e ora di inizio simulazione: " + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     file.close()
 
@@ -83,23 +84,23 @@ for id in slice_path_list:
     load = Load(path_pazienti = "D:/Download/data/pazienti_new.mat")
     if allview == True:
         view = 'layer'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices_layer, labels_layer, ID_paziente_slice_layer = load.slices()
 
         view = 'row'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
         slices_row, labels_row, ID_paziente_slice_row = load.slices()
 
         view = 'column'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
         slices_column, labels_column, ID_paziente_slice_column = load.slices()
 
         slices = np.concatenate((slices_layer, slices_row, slices_column), axis = 0)
         labels = np.concatenate((labels_layer, labels_row, labels_column), axis = 0)
         ID_paziente_slice = np.concatenate((ID_paziente_slice_layer, ID_paziente_slice_row, ID_paziente_slice_column), axis = 0)
     else:
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices, labels, ID_paziente_slice = load.slices()
 
@@ -131,6 +132,7 @@ for id in slice_path_list:
                       k_iter = k,
                       n_patient_test=n_patient_test,
                       augmented=augmented,
+                      fill_mode=fill_mode,
                       alexnet=alexnet,
                       my_callbacks=my_callbacks,
                       run_folder=run_folder,
