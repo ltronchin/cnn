@@ -20,7 +20,8 @@ class My_callbacks():
             keras.callbacks.ModelCheckpoint(
                 filepath=os.path.join(self.run_folder,"model/model_{}.h5".format(k)),
                 monitor='val_accuracy',
-                save_best_only=True,
+                #save_weights_only = True,
+                save_best_only = True,
             ),
             #keras.callbacks.ReduceLROnPlateau(
             #    monitor = 'val_loss',

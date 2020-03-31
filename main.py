@@ -13,31 +13,35 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
+row_excel = 3
 augmented = 1
-fill_mode_list = ['constant', 'reflect', 'nearest']
+#fill_mode_list = ['constant', 'reflect', 'nearest']
+fill_mode = 'constant'
 load = False
-num_epochs = 500
+num_epochs = 1
 batch = 128
 l1 = 'none'
 l2 = 'none'
 lr = 0.0001
 validation_method = 'kfold' #bootstrap
 # Parametri kfold
-k = 3
+k = 2
 # Parametri per bootstrap
 n_patient_test = 10
 boot_iter = 15
 activation = 'leaky_relu' #relu
 optimiser = 'adam' #rmsprop
 initializer = 'xavier'
-input_dim = (64, 64, 1)
+input_dim = (78, 78, 1)
 batch_norm = True
 allview = False
 view = 'layer'
-slice_path_no_crop= "ID8_64x64_2080rowcolumn_no_crop"
-slice_path_crop = "ID8_64x64_2080rowcolumn"
+#slice_path_no_crop= "ID8_64x64_2080rowcolumn_no_crop"
+#slice_path_crop = "ID8_64x64_2080rowcolumn"
+#slice_path_list = ["ID9_1", "ID10_1"]
+slice_path_list = ["ID9_padding"]
 
-for fill_mode in fill_mode_list:
+for slice_path_ID in slice_path_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
     model = 'CNN_Alexnet'
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -49,9 +53,11 @@ for fill_mode in fill_mode_list:
         os.makedirs(run_folder)
         os.makedirs(os.path.join(run_folder, 'model'))
         os.makedirs(os.path.join(run_folder, 'plot'))
+        os.makedirs(os.path.join(run_folder, 'data'))
+        os.makedirs(os.path.join(run_folder, 'data_pazienti'))
 
     file = open(os.path.join(run_folder, "Parameters.txt"), "a")
-    file.write("Dataset: {}\n".format(slice_path_crop))
+    file.write("Dataset: {}\n".format(slice_path_ID))
     if allview == True:
         file.write("Allview: {}\n".format(allview))
     else:
@@ -84,28 +90,28 @@ for fill_mode in fill_mode_list:
     load = Load(path_pazienti = "D:/Download/data/pazienti_new.mat")
     if allview == True:
         view = 'layer'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices_layer, labels_layer, ID_paziente_slice_layer = load.slices()
 
         view = 'row'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         slices_row, labels_row, ID_paziente_slice_row = load.slices()
 
         view = 'column'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         slices_column, labels_column, ID_paziente_slice_column = load.slices()
 
         slices = np.concatenate((slices_layer, slices_row, slices_column), axis = 0)
         labels = np.concatenate((labels_layer, labels_row, labels_column), axis = 0)
         ID_paziente_slice = np.concatenate((ID_paziente_slice_layer, ID_paziente_slice_row, ID_paziente_slice_column), axis = 0)
     else:
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices, labels, ID_paziente_slice = load.slices()
 
     # Creazione istanza della classe DataAugmentation
-    data_aug = DataAugmentation("D:/Download/data/ID_RUN/"+ slice_path_crop +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat")
+    data_aug = DataAugmentation("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat")
 
     # ------------------------------- Creazione istanze classe Alexnet e classe Callbacks ----------------------------------
     alexnet = Alexnet(input_dim = input_dim,

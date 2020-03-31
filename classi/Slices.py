@@ -4,7 +4,7 @@ from tensorflow.keras.utils import to_categorical
 
 class Slices():
 
-    def __init__(self, ID_paziente_slice, slices, labels, paziente_train, paziente_val, paziente_test, run_folder, k):
+    def __init__(self, ID_paziente_slice, slices, labels, paziente_train, paziente_val, paziente_test, run_folder, idx):
 
         self.ID_paziente_slice = ID_paziente_slice
         self.slices = slices
@@ -13,7 +13,7 @@ class Slices():
         self.paziente_val = paziente_val
         self.paziente_test = paziente_test
         self.run_folder = run_folder
-        self.k = k
+        self.idx = idx
 
     # -------------------- Creazione set di Training ------------------------
     def train(self):

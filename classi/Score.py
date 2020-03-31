@@ -10,17 +10,18 @@ import math as math
 
 class Score():
 
-    def __init__(self, X_test, Y_test, k, alexnet, run_folder, paziente_test, ID_paziente_slice_test, label_paziente_test):
+    def __init__(self, X_test, Y_test, ID_paziente_slice_test, idx, alexnet, run_folder, paziente_test, label_paziente_test, best_on_val_set):
         self.X_test = X_test
         self.Y_test = Y_test
-        self.k = k
+        self.idx = idx
         self.alexnet = alexnet
         self.run_folder = run_folder
         self.paziente_test = paziente_test
         self.ID_paziente_slice_test = ID_paziente_slice_test
         self.label_paziente_test = label_paziente_test
+        self.best_on_val_set = best_on_val_set
 
-    def metrics(self, Y_true, Y_pred):
+    def metrics(self, Y_true, Y_pred, subject):
         conf_mat = confusion_matrix(Y_true, Y_pred, labels=[0, 1])
         print("\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(conf_mat))
 
@@ -48,6 +49,18 @@ class Score():
               "\nFalse negative: {}"
               "\nTotali veri negativi: {}"
               "\nTotali veri positivi: {}".format(tn, fp, tp, fn, neg_true, pos_true))
+
+        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+        file.write("\n-------------- FOLD: {} --------------".format(self.idx))
+        file.write("\nScore {}:"
+                   "\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(subject, conf_mat))
+        file.write("\nTrue negative: {}"
+                   "\nFalse positive: {}"
+                   "\nTrue positive: {}"
+                   "\nFalse negative: {}"
+                   "\nTotali veri negativi: {}"
+                   "\nTotali veri positivi: {}\n".format(tn, fp, tp, fn, neg_true, pos_true))
+        file.close()
 
         # accuracy: tp + tn / positivi veri + negativi veri -> quantifica il numero di volte che il classificatore ha
         # dato un risposta corretta (non consente di capire la distribuzione dei tp e tn)
@@ -90,6 +103,17 @@ class Score():
               '\nF1-score: {}'
               '\nMedia delle accuratezze: {}'.format(accuracy, precision, recall, specificity, f1_score, g))
 
+        # 'a' apertura del file in scrittura
+        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+        file.write("\nScore {}:"
+                   "\nAccuratezza: {}"
+                   "\nPrecisione: {}"
+                   "\nRecall: {}"
+                   "\nF1_score: {}"
+                   "\nSpecificità: {}"
+                   "\nMedia delle accuratezze: {}".format(subject, accuracy, precision, recall, f1_score, specificity, g))
+        file.close()
+
         return accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true
 
     def predictions(self):
@@ -111,35 +135,23 @@ class Score():
         for idx in range(predictions.shape[0]):
             Y_pred.append(np.argmax(predictions[idx]))
 
-        Y_pred = np.asarray(Y_pred)
+        Y_pred = np.array(Y_pred)
 
-        accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred)
+        accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred, "Slice")
 
         if pos_true != 0 and neg_true != 0:
             auc = self.roc_curve(predictions[:,1], Y_true)
-            # Se l'area sotto la curva ROC è di molto inferiore del 50% si ribaltano le etichette
+            # Se l'area sotto la curva ROC è inferiore del 50% si ribaltano le etichette
             if auc < 0.5:
                 print("\n ---- Ribalto etichette ---- \n")
                 Y_pred = []
                 for idx in range(predictions.shape[0]):
                     Y_pred.append(np.argmin(predictions[idx]))
-                Y_pred = np.asarray(Y_pred)
-                accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred)
+                Y_pred = np.array(Y_pred)
+                accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred, "Slice")
                 auc = self.roc_curve(predictions[:,0], Y_true)
         else:
             auc = math.nan
-
-        # 'a' apertura del file in scrittura
-        file = open(os.path.join(self.run_folder, "score.txt"), "a")
-        file.write("\n-------------- FOLD: {} --------------".format(self.k))
-        file.write("\nScore slice:\nAccuratezza: {}"
-                   "\nPrecisione: {}"
-                   "\nRecall: {}"
-                   "\nF1_score: {}"
-                   "\nSpecificità: {}"
-                   "\nMedia delle accuratezze: {}"
-                   "\nAUC: {}\n".format(accuracy, precision, recall, f1_score, specificity, g, auc))
-        file.close()
 
         accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
         specificity_paziente, g_paziente = self.predictions_pazienti(Y_pred)
@@ -166,7 +178,7 @@ class Score():
                         zero_pred += 1
                     else:
                         uno_pred += 1
-                    # print(zero_pred, uno_pred)
+            # print(zero_pred, uno_pred)
             if zero_pred > uno_pred:
                 pred_paziente_test = 0
             else:
@@ -174,24 +186,14 @@ class Score():
 
             pred_paziente_test_list.append(pred_paziente_test)
             # print('\n---------------------------------------------------\n')
-            # print('Paziente: {}, verità paziente: {}, predizione paziente: {} (zero totali: {}, '
-            #      'uno totali: {})'.format(paziente_test[n], lab_test[n], pred_paziente_test_list[n], zero_pred, uno_pred))
+            #print('Paziente: {}, verità paziente: {}, predizione paziente: {} (zero totali: {}, '
+            #      'uno totali: {})'.format(self.paziente_test[n], self.label_paziente_test[n], pred_paziente_test_list[n], zero_pred, uno_pred))
             # print('\n---------------------------------------------------\n')
 
-        pred_paziente_test = np.asarray(pred_paziente_test_list)
-        # print('\n---------------------------------------------------\n')
+        pred_paziente_test = np.array(pred_paziente_test_list)
         accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
-        specificity_paziente, g_paziente, pos_true_paziente, neg_true_paziente  = self.metrics(self.label_paziente_test, pred_paziente_test)
+        specificity_paziente, g_paziente, pos_true_paziente, neg_true_paziente  = self.metrics(self.label_paziente_test, pred_paziente_test, "Paziente")
 
-        file = open(os.path.join(self.run_folder, "score.txt"), "a")
-        file.write("\nScore paziente:\nAccuratezza_paz: {}"
-                   "\nPrecisione_paz: {}"
-                   "\nRecall_paz: {}"
-                   "\nF1_score_paz: {}"
-                   "\nSpecificità_paz: {}"
-                   "\nMedia delle accuratezze_paz:  {}\n".format(accuracy_paziente, precision_paziente, recall_paziente,
-                                                    f1_score_paziente, specificity_paziente, g_paziente))
-        file.close()
         return accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente, specificity_paziente, g_paziente
 
     def roc_curve(self, predictions, Y_true):
@@ -207,35 +209,39 @@ class Score():
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         plt.grid(True)
-        plt.savefig(os.path.join(self.run_folder, "plot/roc_curve{}.png".format(self.k)), dpi=1200, format='png')
+        plt.savefig(os.path.join(self.run_folder, "plot/roc_curve{}.png".format(self.idx)), dpi=1200, format='png')
 
         plt.show()
         return auc
 
-    def plot_loss_accuracy(self, loss_history, val_loss_history, acc_history, val_acc_history):
+    def plot_loss_accuracy(self, loss_history, val_loss_history, acc_history, val_acc_history, mean):
+        if mean == True:
+            title = 'mean'
+        else:
+            title = self.idx
         # Plot della loss per traning e validation
         epochs = range(1, len(loss_history) + 1)
 
         plt.figure()
         plt.plot(epochs, loss_history, 'r', label = 'Training loss')
         plt.plot(epochs, val_loss_history, 'b', label = 'Validation loss')
-        plt.title('Training and validation loss fold: {}'.format(self.k))
+        plt.title('Training and validation loss fold: {}'.format(title))
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend()
         plt.grid(True)
-        plt.savefig(os.path.join(self.run_folder, "plot/train_val_loss_{}.png".format(self.k)), dpi=1200, format='png')
+        plt.savefig(os.path.join(self.run_folder, "plot/train_val_loss_{}.png".format(title)), dpi=1200, format='png')
 
         # Plot dell'accuratezza per training e validation
         plt.figure()
         plt.plot(epochs, acc_history, 'r', label = 'Training accuracy')
         plt.plot(epochs, val_acc_history, 'b', label = 'Validation accuracy')
-        plt.title('Training and validation accuracy fold: {}'.format(self.k))
+        plt.title('Training and validation accuracy fold: {}'.format(self.idx))
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend()
         plt.grid(True)
-        plt.savefig(os.path.join(self.run_folder, "plot/train_val_accuracy_{}.png".format(self.k)), dpi=1200, format='png')
+        plt.savefig(os.path.join(self.run_folder, "plot/train_val_accuracy_{}.png".format(title)), dpi=1200, format='png')
         plt.show()
         plt.close()
 

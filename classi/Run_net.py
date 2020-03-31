@@ -21,8 +21,10 @@ import os
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
+from tensorflow.keras import models
 
 from classi.Slices import Slices
+from classi.SaveScore import SaveScore
 from classi.Score import Score
 
 
@@ -30,7 +32,7 @@ class Run_net():
 
     def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
                  k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load, data_aug):
-        self.validation_method = validation_method,
+        self.validation_method = validation_method
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
 
@@ -96,6 +98,10 @@ class Run_net():
             else:
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.kfold(idx, num_val_samples)
 
+            # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
+            np.save(os.path.join(self.run_folder, "data_pazienti/paziente_val_{}.h5".format(idx)), paziente_val, allow_pickle = False)
+            np.save(os.path.join(self.run_folder, "data_pazienti/lab_paziente_val_{}.h5".format(idx)), lab_paziente_val, allow_pickle=False)
+
             # Chiamata per la creazione di un foglio excel che mostra la suddivisione dei pazienti in training e test
             self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train, idx)
 
@@ -110,17 +116,25 @@ class Run_net():
                                    paziente_val = paziente_val,
                                    paziente_test = paziente_val,
                                    run_folder = self.run_folder,
-                                   k = idx)
+                                   idx = idx)
 
             X_val, Y_val, true_label_val, ID_paziente_slice_val = create_slices.val()
             X_train, Y_train, true_label_train, ID_paziente_slice_train = create_slices.train()
+
+            # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
+            np.save(os.path.join(self.run_folder, "data/X_train_{}.h5".format(idx)), X_train, allow_pickle =False)
+            np.save(os.path.join(self.run_folder, "data/true_label_train_{}.h5".format(idx)), true_label_train, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/ID_paziente_slice_train_{}.h5".format(idx)), ID_paziente_slice_train, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/X_val_{}.h5".format(idx)), X_val, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/true_label_val_{}.h5".format(idx)), true_label_val, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/ID_paziente_slice_val_{}.h5".format(idx)), ID_paziente_slice_val, allow_pickle=False)
 
             print("\n[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("[INFO] -- Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
 
             # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
             # Data augmentation
-            total_expand_slice = 15000
+            #total_expand_slice = 15000
 
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
@@ -134,32 +148,37 @@ class Run_net():
                 # Y_train_aug = np.concatenate((Y_train, Y_aug), axis=0)
                 # print("[INFO] -- slice per il training della rete: {}, label {}".format(X_train_aug.shape, Y_train_aug.shape))
 
-                train_datagen = ImageDataGenerator(rotation_range = 45,
-                                                   width_shift_range = 0.10,
-                                                   height_shift_range = 0.10,
-                                                   shear_range = 30,
-                                                   zoom_range = 0.2,
+                train_datagen = ImageDataGenerator(rotation_range = 175,
+                                                   width_shift_range = (-5, +5),
+                                                   height_shift_range = (-5, +5),
+                                                   shear_range = 20 ,
                                                    horizontal_flip = 'true',
+                                                   vertical_flip='true',
                                                    fill_mode = self.fill_mode,
                                                    cval = 0)
 
-                train_datagen_elastic = ImageDataGenerator(preprocessing_function=lambda x: self.data_aug.elastic_transform(x, [30,40], 5, random_state=None),
-                                                           fill_mode=self.fill_mode,
-                                                           cval=0)
+                #train_datagen_elastic = ImageDataGenerator(rotation_range = 175,
+                #                                           width_shift_range = (-5, +5),
+                #                                           height_shift_range = (-5, +5),
+                #                                           horizontal_flip = 'true',
+                #                                           vertical_flip='true',
+                #                                           preprocessing_function=lambda x: self.data_aug.elastic_transform(x, [30,40], 5, random_state=None),
+                #                                           fill_mode=self.fill_mode,
+                #                                           cval=0)
 
-                train_generator = self.multiple_generator(train_datagen, train_datagen_elastic, X_train, Y_train)
+                #train_generator = self.multiple_generator(train_datagen, train_datagen_elastic, X_train, Y_train)
 
-                #train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
+                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
                 print(self.batch)
                 print(X_train.shape[0])
-                step_per_epoch = X_train.shape[0] // (self.batch * 2)
+                step_per_epoch = X_train.shape[0] // (self.batch)
                 print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
 
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
 
             self.how_generator_work(train_datagen, X_train)
-            self.how_generator_work(train_datagen_elastic, X_train)
+            #self.how_generator_work(train_datagen_elastic, X_train)
             self.how_generator_work(test_datagen, X_val)
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
@@ -174,125 +193,47 @@ class Run_net():
                                 steps_per_epoch = step_per_epoch,
                                 epochs = self.num_epochs,
                                 validation_data = validation_generator,
-                                validation_steps = (X_val.shape[0] / self.batch),
+                                validation_steps = X_val.shape[0] // (self.batch),
                                 callbacks = callbacks_list,
                                 verbose=0)
-            self.all_history.append(history)
-            model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)))
 
-            # ---------------------------------------- SCORE SINGOLA FOLD ---------------------------------------------
-            score = Score(X_test = X_val,
-                          Y_test = true_label_val,
-                          k = idx,
-                          alexnet = model,
-                          run_folder = self.run_folder,
-                          paziente_test = paziente_val,
-                          ID_paziente_slice_test = ID_paziente_slice_val,
-                          label_paziente_test = lab_paziente_val)
+            # Salvataggio del modello alla fine del training
+            model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)), include_optimizer=False)
 
-            # Plot di accuratezza e loss per la singola fold
-            # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò
-            # che è successo durante il training
-            # Valori di accuratezza per ogni epoca
-            acc_history = history.history['accuracy']  # contiene i valori di accuratezza per ogni epoca
-            loss_history = history.history['loss']
-            val_acc_history = history.history['val_accuracy']
-            val_loss_history = history.history['val_loss']
+            # Caricamento del modello checkpoint -- modello che ha permesso di ottenere la massima accuratezza sul set
+            # di validazione
+            best_on_val_set = models.load_model(self.run_folder + '/model/model_{}.h5'.format(idx))
 
-            score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history)
+            score = Score(X_test=X_val,
+                          Y_test=true_label_val,
+                          ID_paziente_slice_test=ID_paziente_slice_val,
+                          idx=idx,
+                          alexnet=model,
+                          run_folder=self.run_folder,
+                          paziente_test=paziente_val,
+                          label_paziente_test=lab_paziente_val,
+                          best_on_val_set = 'end_of_training')
 
-            print('\n ------------------ METRICHE SLICE E PAZIENTE ------------------')
-            accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente, recall_paziente, \
-            f1_score_paziente, specificity_paziente, g_paziente = score.predictions()
+            score_best_model_on_val_set = Score(X_test=X_val,
+                                                Y_test=true_label_val,
+                                                ID_paziente_slice_test=ID_paziente_slice_val,
+                                                idx=idx,
+                                                alexnet=best_on_val_set,
+                                                run_folder=self.run_folder,
+                                                paziente_test=paziente_val,
+                                                label_paziente_test=lab_paziente_val,
+                                                best_on_val_set = 'best_model_on_val_set')
 
-            self.accuracy_his.append(accuracy)
-            self.precision_his.append(precision)
-            self.recall_his.append(recall)
-            self.f1_score_his.append(f1_score)
-            self.specificity_his.append(specificity)
-            self.g_his.append(g)
+            # ---------------------------------------- SCORE ----------------------------------------------
+            save_score = SaveScore(idx = idx,
+                                   run_folder = self.run_folder,
+                                   num_epochs = self.num_epochs)
 
-            self.accuracy_paziente_his.append(accuracy_paziente)
-            self.precision_paziente_his.append(precision_paziente)
-            self.recall_paziente_his.append(recall_paziente)
-            self.f1_score_paziente_his.append(f1_score_paziente)
-            self.specificity_paziente_his.append(specificity_paziente)
-            self.g_paziente_his.append(g_paziente)
-
-            # Creazione liste dei valori di accuratezza e loss (per ogni epoca) per ogni fold
-            self.all_acc_history.append(acc_history)  # contiene le liste dei valori di accuratezza per ogni fold
-            self.all_loss_history.append(loss_history)
-            self.all_val_acc_history.append(val_acc_history)
-            self.all_val_loss_history.append(val_loss_history)
-
-        # -------------------------------------- SCORE SULLE K FOLD --------------------------------------
-        print('\n---------------  Media valori loss e accuratezza sulle varie fold ----------')
-        average_acc_history = [np.mean([x[i] for x in self.all_acc_history]) for i in range(self.num_epochs)]
-        average_loss_history = [np.mean([x[i] for x in self.all_loss_history]) for i in range(self.num_epochs)]
-        average_val_acc_history = [np.mean([x[i] for x in self.all_val_acc_history]) for i in range(self.num_epochs)]
-        average_val_loss_history = [np.mean([x[i] for x in self.all_val_loss_history]) for i in range(self.num_epochs)]
-
-        score = Score('', '', 'mean', '', self.run_folder, '', '', '')
-
-        score.plot_loss_accuracy(average_loss_history,
-                                 average_val_loss_history,
-                                 average_acc_history,
-                                 average_val_acc_history)
-
-        # ------------------------ SLICE -------------------------
-        # nanmean: compute the arithmetic mean along the specified axis, ignoring NaNs
-        accuracy_average = np.nanmean([x for x in self.accuracy_his])
-        precision_average = np.nanmean([x for x in self.precision_his])
-        recall_average = np.nanmean([x for x in self.recall_his])
-        f1_score_average = np.nanmean([x for x in self.f1_score_his])
-        specificity_average = np.nanmean([x for x in self.specificity_his])
-        g_average = np.nanmean([x for x in self.g_his])
-
-        print('\n ------------------ METRICHE MEDIE SLICE ------------------')
-        print('\nAccuratezza: {}'
-              '\nPrecisione: {}'
-              '\nRecall: {}'
-              '\nSpecificità: {}'
-              '\nF1-score: {}'
-              '\nMedia delle accuratezze: {}'.format(accuracy_average, precision_average, recall_average, specificity_average,
-                                      f1_score_average, g_average))
-        # --------------------- PAZIENTI ------------------------
-        accuracy_paziente_average = np.nanmean([x for x in self.accuracy_paziente_his])
-        precision_paziente_average = np.nanmean([x for x in self.precision_paziente_his])
-        recall_paziente_average = np.nanmean([x for x in self.recall_paziente_his])
-        f1_score_paziente_average = np.nanmean([x for x in self.f1_score_paziente_his])
-        specificity_paziente_average = np.nanmean([x for x in self.specificity_paziente_his])
-        g_paziente_average = np.nanmean([x for x in self.g_paziente_his])
-
-        print('\n ------------------ METRICHE MEDIE PAZIENTI ------------------')
-        print('\nAccuratezza: {}'
-              '\nPrecisione: {}'
-              '\nRecall: {}'
-              '\nSpecificità: {}'
-              '\nF1-score: {}'
-              '\nMedia delle accuratezze: {}'.format(accuracy_paziente_average, precision_paziente_average, recall_paziente_average,
-                                      specificity_paziente_average, f1_score_paziente_average, g_paziente_average))
-
-        # Scrittura su file
-        file = open(os.path.join(self.run_folder, "score.txt"), "a")
-        file.write("\nMEDIA SCORE SULLE {} FOLD".format(self.boot_iter))
-        file.write("\nScore slice:\nAccuratezza: {}"
-                   "\nPrecisione: {}"
-                   "\nRecall: {}"
-                   "\nF1_score: {}"
-                   "\nSpecificità: {}"
-                   "\nMedia delle accuratezze: {}\n".format(accuracy_average, precision_average, recall_average,
-                                                f1_score_average, specificity_average, g_average))
-        file.write("\nScore paziente:"
-                   "\nAccuratezza_paz: {}"
-                   "\nPrecisione_paz: {}"
-                   "\nRecall_paz: {}"
-                   "\nF1_score_paz:{}"
-                   "\nSpecificità_paz: {}"
-                   "\nMedia delle accuratezze_paz: {}\n".format(accuracy_paziente_average, precision_paziente_average,
-                                                    recall_paziente_average, f1_score_paziente_average,
-                                                    specificity_paziente_average, g_paziente_average))
-        file.close()
+            save_score.save_single_score(score, history, best_on_val_set = 'end_of_training')
+            save_score.save_single_score(score_best_model_on_val_set, history, best_on_val_set='best_model_on_val_set')
+        # ---------------------------------------- SCORE MEDIATO SULLE VARIE FOLD ----------------------------------------------
+        save_score.save_mean_score(score, best_on_val_set = 'end_of_training')
+        save_score.save_mean_score(score_best_model_on_val_set, best_on_val_set='end_of_training')
 
     # Codice per eliminare duplicati da una lista
     def remove(self, duplicate_list):
@@ -412,14 +353,12 @@ class Run_net():
 
     def multiple_generator(self, train_datagen, train_datagen_clone, X_train, label):
 
-        train_generator = train_datagen.flow(X_train, label, batch_size= self.batch, shuffle = True, seed=42)
-        train_generator_clone = train_datagen_clone.flow(X_train, label, batch_size = self.batch, shuffle = True, seed=42)
-
+        train_generator = train_datagen.flow(X_train, label, batch_size= self.batch, shuffle = True)
+        train_generator_clone = train_datagen_clone.flow(X_train, label, batch_size = self.batch, shuffle = True)
         while True:
             X_train = train_generator.next()
             X_train_clone = train_generator_clone.next()
-            #yield np.concatenate((X_train[0], X_train_clone[0]), axis=0), np.concatenate((X_train[1], X_train_clone[1]), axis=0)
-            yield [X_train[0], X_train_clone[0]], X_train[1]
+            yield np.concatenate((X_train[0], X_train_clone[0]), axis=0), np.concatenate((X_train[1], X_train_clone[1]), axis=0)
 
     def expand_dataset(self, total_augmented_slice, paziente_train, X_train, true_label_train, ID_paziente_slice_train):
         # Creazione slice trasformate per la corrente iterazione -- per ogni slice si applicano 7 trasformazioni (vedi

@@ -1,10 +1,10 @@
-import scipy.io as sio # libreria per importare i dati da Matlab
+import scipy.io as sio  # libreria per importare i dati da Matlab
 import numpy as np
 import copy
-from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
+from tensorflow.keras.preprocessing.image import img_to_array
+
 
 class Load():
-
     def __init__(self, path_pazienti):
         self.path_pazienti = path_pazienti
 
@@ -23,8 +23,8 @@ class Load():
         # shape -> descrive quante DIMENSIONI il tensore ha lungo ogni ASSE
         # ndim -> conta quanti ASSI ha il tensore. Scalare -> tensore 0D, vettore -> tensore 1D, matrice -> tensore 2D
 
-        info = pazienti['pazienti_new'] # salvataggio della struct pazienti in info
-        data = load['slices_resize_' + view][0] # salvataggio della struct slices in data
+        info = pazienti['pazienti_new']  # salvataggio della struct pazienti in info
+        data = load['slices_padding_' + view][0]  # salvataggio della struct slices in data
 
         self.data = data
         self.info = info
@@ -72,7 +72,7 @@ class Load():
     # ogni volta che viene eseguito il codice. Questo permette di validare i risultati quando il codice è eseguito
     # più volte.
     def shuffle_in_unison(self, ID_paziente_shuffle, lab_paziente_shuffle):
-            n_elem = ID_paziente_shuffle.shape[0]
-            np.random.seed(42)
-            indeces = np.random.choice(n_elem, size = n_elem, replace = False)
-            return ID_paziente_shuffle[indeces], lab_paziente_shuffle[indeces]
+        n_elem = ID_paziente_shuffle.shape[0]
+        np.random.seed(42)
+        indeces = np.random.choice(n_elem, size=n_elem, replace=False)
+        return ID_paziente_shuffle[indeces], lab_paziente_shuffle[indeces]
