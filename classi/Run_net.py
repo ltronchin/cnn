@@ -214,26 +214,15 @@ class Run_net():
                           label_paziente_test=lab_paziente_val,
                           best_on_val_set = 'end_of_training')
 
-            score_best_model_on_val_set = Score(X_test=X_val,
-                                                Y_test=true_label_val,
-                                                ID_paziente_slice_test=ID_paziente_slice_val,
-                                                idx=idx,
-                                                alexnet=best_on_val_set,
-                                                run_folder=self.run_folder,
-                                                paziente_test=paziente_val,
-                                                label_paziente_test=lab_paziente_val,
-                                                best_on_val_set = 'best_model_on_val_set')
-
             # ---------------------------------------- SCORE ----------------------------------------------
             save_score = SaveScore(idx = idx,
                                    run_folder = self.run_folder,
                                    num_epochs = self.num_epochs)
 
             save_score.save_single_score(score, history, best_on_val_set = 'end_of_training')
-            save_score.save_single_score(score_best_model_on_val_set, history, best_on_val_set='best_model_on_val_set')
+
         # ---------------------------------------- SCORE MEDIATO SULLE VARIE FOLD ----------------------------------------------
         save_score.save_mean_score(score, best_on_val_set = 'end_of_training')
-        save_score.save_mean_score(score_best_model_on_val_set, best_on_val_set='end_of_training')
 
     # Codice per eliminare duplicati da una lista
     def remove(self, duplicate_list):

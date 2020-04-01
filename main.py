@@ -1,11 +1,13 @@
 import os
 import datetime
 import numpy as np
+
 from classi.Alexnet import Alexnet
 from classi.Load import Load
 from classi.My_callbacks import My_callbacks
 from classi.Run_net import Run_net
 from classi.DataAugmentation import DataAugmentation
+from classi.EvaluateConvNet import EvaluateConvNet
 
 # --------------------------- Aggiunta ambiente virtuale tensorflow i path di Graphviz e CUPTI ------------------------
 os.environ["PATH"] += os.pathsep + 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0/extras/CUPTI/libx64'
@@ -13,33 +15,30 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
-row_excel = 3
-augmented = 1
+augmented = 0
 #fill_mode_list = ['constant', 'reflect', 'nearest']
 fill_mode = 'constant'
 load = False
-num_epochs = 1
+num_epochs = 250
 batch = 128
 l1 = 'none'
 l2 = 'none'
 lr = 0.0001
 validation_method = 'kfold' #bootstrap
 # Parametri kfold
-k = 2
+k = 10
 # Parametri per bootstrap
 n_patient_test = 10
 boot_iter = 15
 activation = 'leaky_relu' #relu
 optimiser = 'adam' #rmsprop
 initializer = 'xavier'
-input_dim = (78, 78, 1)
+input_dim = (48, 48, 1)
 batch_norm = True
 allview = False
 view = 'layer'
-#slice_path_no_crop= "ID8_64x64_2080rowcolumn_no_crop"
-#slice_path_crop = "ID8_64x64_2080rowcolumn"
-#slice_path_list = ["ID9_1", "ID10_1"]
-slice_path_list = ["ID9_padding"]
+
+slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
 
 for slice_path_ID in slice_path_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -144,7 +143,17 @@ for slice_path_ID in slice_path_list:
                       run_folder=run_folder,
                       load=load,
                       data_aug = data_aug)
+
     run_net.run()
+
+    validation_method = 'kfold'
+    if validation_method == 'kfold':
+        n_iter = k
+    else:
+        n_iter = boot_iter
+
+    evalConv = EvaluateConvNet(run_folder=run_folder)
+    evalConv.use_best_model_on_val_set(n_iter)
 
     file = open(os.path.join(run_folder, "Parameters.txt"), "a")
     file.write("\nData e ora di fine simulazione: "  + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))

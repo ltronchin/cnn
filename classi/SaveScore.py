@@ -30,25 +30,24 @@ class SaveScore():
 
     def save_single_score(self, score, history, best_on_val_set):
 
-        if best_on_val_set == 'end_of_training':
-            self.all_history.append(history)
+        self.all_history.append(history)
 
-            # Plot di accuratezza e loss per la singola fold
-            # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò
-            # che è successo durante il training
-            # Valori di accuratezza per ogni epoca
-            acc_history = history.history['accuracy']  # contiene i valori di accuratezza per ogni epoca
-            loss_history = history.history['loss']
-            val_acc_history = history.history['val_accuracy']
-            val_loss_history = history.history['val_loss']
+        # Plot di accuratezza e loss per la singola fold
+        # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò
+        # che è successo durante il training
+        # Valori di accuratezza per ogni epoca
+        acc_history = history.history['accuracy']  # contiene i valori di accuratezza per ogni epoca
+        loss_history = history.history['loss']
+        val_acc_history = history.history['val_accuracy']
+        val_loss_history = history.history['val_loss']
 
-            # Creazione liste dei valori di accuratezza e loss (per ogni epoca) per ogni fold
-            self.all_acc_history.append(acc_history)  # contiene le liste dei valori di accuratezza per ogni fold
-            self.all_loss_history.append(loss_history)
-            self.all_val_acc_history.append(val_acc_history)
-            self.all_val_loss_history.append(val_loss_history)
+        # Creazione liste dei valori di accuratezza e loss (per ogni epoca) per ogni fold
+        self.all_acc_history.append(acc_history)  # contiene le liste dei valori di accuratezza per ogni fold
+        self.all_loss_history.append(loss_history)
+        self.all_val_acc_history.append(val_acc_history)
+        self.all_val_loss_history.append(val_loss_history)
 
-            score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history, False)
+        score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history, False)
 
         print('\n ------------------ METRICHE SLICE E PAZIENTE ({}) ------------------'.format(best_on_val_set))
         accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente, recall_paziente, \
@@ -71,17 +70,17 @@ class SaveScore():
     def save_mean_score(self, score, best_on_val_set):
         # ----------------------------------------------- SCORE  MEDIE -------------------------------------------------
         print('\n---------------  Media valori loss e accuratezza sulle varie fold ({}) ----------'.format(best_on_val_set))
-        if best_on_val_set == 'end_of_training':
-            average_acc_history = [np.mean([x[i] for x in self.all_acc_history]) for i in range(self.num_epochs)]
-            average_loss_history = [np.mean([x[i] for x in self.all_loss_history]) for i in range(self.num_epochs)]
-            average_val_acc_history = [np.mean([x[i] for x in self.all_val_acc_history]) for i in range(self.num_epochs)]
-            average_val_loss_history = [np.mean([x[i] for x in self.all_val_loss_history]) for i in range(self.num_epochs)]
 
-            score.plot_loss_accuracy(average_loss_history,
-                                          average_val_loss_history,
-                                          average_acc_history,
-                                          average_val_acc_history,
-                                          mean = True)
+        average_acc_history = [np.mean([x[i] for x in self.all_acc_history]) for i in range(self.num_epochs)]
+        average_loss_history = [np.mean([x[i] for x in self.all_loss_history]) for i in range(self.num_epochs)]
+        average_val_acc_history = [np.mean([x[i] for x in self.all_val_acc_history]) for i in range(self.num_epochs)]
+        average_val_loss_history = [np.mean([x[i] for x in self.all_val_loss_history]) for i in range(self.num_epochs)]
+
+        score.plot_loss_accuracy(average_loss_history,
+                                      average_val_loss_history,
+                                      average_acc_history,
+                                      average_val_acc_history,
+                                      mean = True)
 
         # ------------------------ SLICE -------------------------
         # nanmean: compute the arithmetic mean along the specified axis, ignoring NaNs

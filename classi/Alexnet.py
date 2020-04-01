@@ -3,7 +3,7 @@ from tensorflow.keras.optimizers import Adam, RMSprop
 from tensorflow.keras import layers, models
 from tensorflow.keras.utils import plot_model
 import os
-import pickle as pkl
+
 from tensorflow.keras import regularizers
 class Alexnet():
 
