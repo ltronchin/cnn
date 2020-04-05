@@ -38,6 +38,7 @@ batch_norm = True
 allview = False
 view = 'layer'
 
+#slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
 slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
 
 for slice_path_ID in slice_path_list:
@@ -69,7 +70,7 @@ for slice_path_ID in slice_path_list:
     file.write("Activation: {}\n".format(activation))
     file.write("Optimiser: {}\n".format(optimiser))
     file.write("Initializer: {}\n".format(initializer))
-    file.write("Dropout: 0.5, 0.5, 0.5, 0.5 \n")
+    file.write("Dropout: 0.20, 0.25, 0.30, 0.35 \n")
     file.write("Batch normalization: {}\n".format(batch_norm))
     file.write("Learning rate: {}\n".format(lr))
     file.write("Epoche: {}, Batch size: {}\n".format(num_epochs, batch))

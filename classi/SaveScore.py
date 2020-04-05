@@ -7,7 +7,6 @@ class SaveScore():
         self.num_epochs = num_epochs
         self.run_folder = run_folder
 
-        self.all_history = []
         self.all_acc_history = []
         self.all_loss_history = []
         self.all_val_acc_history = []
@@ -28,8 +27,6 @@ class SaveScore():
         self.g_paziente_his = []
 
     def save_single_score(self, score, history, best_on_val_set):
-
-        self.all_history.append(history)
 
         # Plot di accuratezza e loss per la singola fold
         # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò

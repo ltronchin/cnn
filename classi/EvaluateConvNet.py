@@ -3,7 +3,6 @@ from tensorflow.keras import models
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
-from tensorflow.keras.preprocessing.image import array_to_img
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -34,7 +33,7 @@ class EvaluateConvNet():
             # ------------------------------ CARICAMENTO DATI DA CARTELLA DATI SLICE ----------------------------------
             print("\n ------ CARICAMENTO: {} ------ ".format(idx))
             # Caricamento del modello trainato
-            path = self.run_folder + '/model/best_model_fold{}.h5'.format(idx)
+            path = self.run_folder + '/model/best_model_gscore_fold{}.h5'.format(idx)
             alexnet = models.load_model(path)
 
             # Caricamento label di test

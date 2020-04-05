@@ -19,6 +19,7 @@ import numpy as np
 import xlsxwriter
 import os
 import math
+from tensorflow import  keras
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
@@ -26,7 +27,8 @@ from tensorflow.keras.preprocessing.image import array_to_img
 from classi.Slices import Slices
 from classi.SaveScore import SaveScore
 from classi.Score import Score
-from classi.Custom_callbacks import Custom_callbacks
+from classi.Metrics_callbacks import Metrics_callbacks
+from classi.LR_schedule_callbacks import LearningRateScheduler
 
 class Run_net():
 
@@ -74,6 +76,9 @@ class Run_net():
         self.g_paziente_his = []
 
         self.save_score = SaveScore(run_folder=self.run_folder,num_epochs=self.num_epochs)
+        self.LR_SCHEDULE = [(150, 0.0005),
+                            (200, 0.0001),
+                            (300, 0.0005)] # (epoch to start, learning rate) tuples
 
     def run(self):
         if self.validation_method[0] == 'bootstrap':
@@ -95,9 +100,9 @@ class Run_net():
         np.random.seed(42)
         for idx in range(iter):
             if self.validation_method[0] == 'bootstrap':
-                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.bootstrap(idx, index)
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.bootstrap(idx, index)
             else:
-                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list = self.kfold(idx, num_val_samples)
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.kfold(idx, num_val_samples)
 
             # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
             np.save(os.path.join(self.run_folder, "data_pazienti/paziente_val_{}.h5".format(idx)), paziente_val, allow_pickle = False)
@@ -142,7 +147,7 @@ class Run_net():
                 print(self.batch)
                 print(X_train.shape[0])
                 # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
-                step_per_epoch = math.ceil(X_train.shape[0] / (self.batch))
+                step_per_epoch = X_train.shape[0] // (self.batch)
                 print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
             else:
 
@@ -158,11 +163,11 @@ class Run_net():
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
                 print(self.batch)
                 print(X_train.shape[0])
-                step_per_epoch = math.ceil(X_train.shape[0] / (self.batch))
+                step_per_epoch = X_train.shape[0] // (self.batch)
                 print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
 
             test_datagen = ImageDataGenerator()
-            validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
+            validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = False)
 
             self.how_generator_work(train_datagen, X_train)
             self.how_generator_work(test_datagen, X_val)
@@ -171,15 +176,18 @@ class Run_net():
             # Costruzione del modello
             model = self.alexnet.build_alexnet()
 
-            custom_call = Custom_callbacks(validation_generator, self.batch, self.run_folder, idx)
+            metrics= Metrics_callbacks(validation_generator, self.batch, self.run_folder, idx)
+            #learning_scheduler = LearningRateScheduler(self.lr_schedule)
+            callbacks_list = [metrics]
+
             # Fit del modello
             history = model.fit(train_generator,
                                 steps_per_epoch = step_per_epoch,
                                 epochs = self.num_epochs,
                                 validation_data = validation_generator,
-                                validation_steps = math.ceil(X_val.shape[0] / (self.batch)),
-                                callbacks = [custom_call],
-                                verbose=0)
+                                validation_steps = X_val.shape[0] // (self.batch),
+                                callbacks = callbacks_list,
+                                verbose=1)
 
             # Salvataggio del modello alla fine del training
             model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)), include_optimizer=False)
@@ -266,7 +274,6 @@ class Run_net():
     def bootstrap(self, idx, index):
         # ------------------------------------ DIVISIONE SET PER PAZIENTI -------------------------------------
         print('\n ------------------------ Processing BOOTSTRAP iter #{} ------------------------'.format(idx + 1))
-        callbacks_list = self.my_callbacks.callbacks_list(idx)
         # n_sample: numero di campioni da estrarre.
         # replace -> se True, estrazione con reintroduzione
         # Estrazione random degli indici di 15 pazienti con reintroduzione (potrebbero essere meno di 15 pazienti
@@ -290,10 +297,9 @@ class Run_net():
         print("[INFO] -- Numero pazienti per la validazione: {}".format(paziente_val.shape))
         print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
-        return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
+        return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val
 
     def kfold(self, idx, num_val_samples):
-        callbacks_list = self.my_callbacks.callbacks_list(idx)
         print('\n ------------------------ Processing KCROSSVAL fold #{} ------------------------'.format(idx + 1))
         # ------------------------------------------- PAZIENTI --------------------------------------------------
         # Si effettua la divisione dei set di training, validation e test sui PAZIENTI e NON sulle singole slice: questo per
@@ -314,5 +320,14 @@ class Run_net():
                                                                                    (idx + 1) * num_val_samples))
         print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
-        return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
+        return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val
+
+    def lr_schedule(self, epoch, lr):
+        """Helper function to retrieve the scheduled learning rate based on epoch."""
+        if epoch < self.LR_SCHEDULE[0][0] or epoch > self.LR_SCHEDULE[-1][0]:
+            return lr
+        for i in range(len(self.LR_SCHEDULE)):
+            if epoch == self.LR_SCHEDULE[i][0]:
+                return self.LR_SCHEDULE[i][1]
+        return lr
 

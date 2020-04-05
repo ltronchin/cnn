@@ -3,9 +3,11 @@ from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import sys
+import os
 
 from classi.Alexnet import Alexnet
 import matplotlib.pyplot as plt
+run_folder = "C:/Users/GeNeSiS/PycharmProjects"
 
 # plot diagnostic learning curves
 def summarize_diagnostics(history):
@@ -14,11 +16,16 @@ def summarize_diagnostics(history):
     plt.title('Cross Entropy Loss')
     plt.plot(history.history['loss'], color='blue', label='train')
     plt.plot(history.history['val_loss'], color='orange', label='test')
+    plt.grid(True)
     # plot accuracy
     plt.subplot(212)
     plt.title('Classification Accuracy')
     plt.plot(history.history['accuracy'], color='blue', label='train')
     plt.plot(history.history['val_accuracy'], color='orange', label='test')
+    plt.grid(True)
+
+    plt.savefig(os.path.join(run_folder, "cifar10_score.png"), dpi=1200,
+                format='png')
     plt.show()
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -37,9 +44,9 @@ y_test = to_categorical(y_test, NUM_CLASSES)
 
 l1 = 'none'
 l2 = 'none'
-lr = 0.0002
-activation = 'relu' # leaky_relu
-optimiser = 'rmsprop' # adam
+lr = 0.00001
+activation = 'leaky_relu' # relu
+optimiser = 'adam' # rmsprop
 initializer = 'xavier'
 input_dim = (32, 32, 3)
 batch_norm = True
@@ -67,9 +74,10 @@ model = alexnet.build_alexnet()
 
 # Fit del modello
 history = model.fit(train_generator,
-                    steps_per_epoch=(x_train.shape[0] / 64),
-                    epochs=100,
+                    steps_per_epoch=x_train.shape[0] // (64),
+                    epochs=50,
                     validation_data=validation_generator,
-                    validation_steps=(x_test.shape[0] / 64))
+                    validation_steps=x_test.shape[0] // (64),
+                    verbose = 1)
 
 summarize_diagnostics(history)

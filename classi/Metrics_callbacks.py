@@ -4,13 +4,14 @@ import numpy as np
 import os
 import itertools
 import math
+import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
 from sklearn.metrics import f1_score, precision_score, recall_score
 from tensorflow import keras
 
 
-class Custom_callbacks(keras.callbacks.Callback):
+class Metrics_callbacks(keras.callbacks.Callback):
 
     def __init__(self, val_data, batch_size, run_folder, iter):
         super().__init__()
@@ -19,6 +20,7 @@ class Custom_callbacks(keras.callbacks.Callback):
         self.run_folder = run_folder
         self.iter = iter
 
+    # Callback invocata all'inizio del training della rete
     def on_train_begin(self, logs=None):
 
         self.val_specificity = []
@@ -27,14 +29,15 @@ class Custom_callbacks(keras.callbacks.Callback):
         self.val_recalls = []
         self.val_g = []
         # Initialize the best as 0
-        self.best = 0
+        self.best_g = 0
+        self.best_f1 = 0
 
-    # Chiamata alla fine di ogni epoca
+    # Callback chiamata alla fine di ogni epoca
     def on_epoch_end(self, epoch, logs=None):
         if self.validation_data is None:
             raise RuntimeError('Requires validation data.')
 
-        batches = len(self.validation_data)
+        batches = len(self.validation_data) - 1
         #total = batches * self.batch_size
 
         Y_pred = []
@@ -46,21 +49,23 @@ class Custom_callbacks(keras.callbacks.Callback):
             # Un discorso analogo vale per le immagini di training
             X_val, Y_val = next(self.validation_data)
 
+            # Liste che contengono rispettivamente label predetta e verità per ogni batch
             Y_pred_batch = []
             Y_true_batch = []
-
             # argmax restituisce l'indice del massimo valore lungo un asse
             predictions = self.model.predict(X_val)
             for idx in range(predictions.shape[0]):
                 Y_pred_batch.append(np.argmax(predictions[idx]))
                 Y_true_batch.append(np.argmax(Y_val[idx]))
 
+            # Salvataggio dei risultati ottenuti per la corrente batch in una lista (lista in una lista)
             Y_pred.append(Y_pred_batch)
             Y_true.append(Y_true_batch)
 
         val_pred = np.asarray(list(itertools.chain.from_iterable(Y_pred)))
         val_true = np.asarray(list(itertools.chain.from_iterable(Y_true)))
 
+        # Calcolo delle metriche
         conf_mat = confusion_matrix(val_true, val_pred, labels=[0, 1])
         tn, fp, fn, tp = conf_mat.ravel()
         _val_specificity = tn / (tn + fp)
@@ -82,12 +87,19 @@ class Custom_callbacks(keras.callbacks.Callback):
               "— val_specificity % f" % (_val_f1, _val_precision,_val_recall, _val_g, _val_specificity))
 
         # Model checkpoint
-        current = _val_g
-        if np.greater(current, self.best):
-            self.best = current
-            self.model.save(os.path.join(self.run_folder, "model/best_model_fold%d.h5" % (self.iter)))
+        current_g = _val_g
+        if np.greater(current_g, self.best_g):
+            self.best_g = current_g
+            self.model.save(os.path.join(self.run_folder, "model/best_model_gscore_fold%d.h5" % (self.iter)))
+
+        current_f1 = _val_f1
+        if np.greater(current_f1, self.best_f1):
+            self.best_f1 = current_f1
+            self.model.save(os.path.join(self.run_folder, "model/best_model_f1score_fold%d.h5" % (self.iter)))
+
         return
 
+    # Callback chiamata alla fine del training
     def on_train_end(self, logs=None):
 
         epochs = range(1, len(self.val_g) + 1)

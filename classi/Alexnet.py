@@ -36,7 +36,7 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         # Pooling 1
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.5))
+        model.add(layers.Dropout(0.20))
 
         # Convoluzione 3
         model.add(layers.Conv2D(64, (3, 3), kernel_initializer = kernel_init, padding='same'))
@@ -50,7 +50,7 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         # Pooling 2
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.5))
+        model.add(layers.Dropout(0.25))
 
         # Convoluzione 5
         model.add(layers.Conv2D(128, (3, 3), kernel_initializer = kernel_init, padding='same'))
@@ -64,7 +64,7 @@ class Alexnet():
             model.add(layers.BatchNormalization())
         # Pooling 3
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.5))
+        model.add(layers.Dropout(0.30))
 
         model.add(layers.Flatten())
 
@@ -73,7 +73,7 @@ class Alexnet():
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        model.add(layers.Dropout(0.5))
+        model.add(layers.Dropout(0.35))
 
         model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
 
