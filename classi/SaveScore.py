@@ -2,11 +2,10 @@ import numpy as np
 import os
 
 class SaveScore():
-    def __init__(self, idx, run_folder, num_epochs):
+    def __init__(self, run_folder, num_epochs):
 
         self.num_epochs = num_epochs
         self.run_folder = run_folder
-        self.idx = idx
 
         self.all_history = []
         self.all_acc_history = []
@@ -35,17 +34,22 @@ class SaveScore():
         # Plot di accuratezza e loss per la singola fold
         # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò
         # che è successo durante il training
-        # Valori di accuratezza per ogni epoca
-        acc_history = history.history['accuracy']  # contiene i valori di accuratezza per ogni epoca
-        loss_history = history.history['loss']
+
+        # Valori di accuratezza e di loss per ogni epoca
+        acc_history = history.history['accuracy']
         val_acc_history = history.history['val_accuracy']
+
+        loss_history = history.history['loss']
         val_loss_history = history.history['val_loss']
 
-        # Creazione liste dei valori di accuratezza e loss (per ogni epoca) per ogni fold
-        self.all_acc_history.append(acc_history)  # contiene le liste dei valori di accuratezza per ogni fold
+        # Creazione liste dei valori di accuratezza e loss per ogni fold -- liste che contengono il valore di accuratezza
+        # calcolato alla fine di ogni epoca
+        self.all_acc_history.append(acc_history)
         self.all_loss_history.append(loss_history)
         self.all_val_acc_history.append(val_acc_history)
         self.all_val_loss_history.append(val_loss_history)
+
+        # Creazione lista dei valori di f1-score
 
         score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history, False)
 
@@ -67,7 +71,7 @@ class SaveScore():
         self.specificity_paziente_his.append(specificity_paziente)
         self.g_paziente_his.append(g_paziente)
 
-    def save_mean_score(self, score, best_on_val_set):
+    def save_mean_score(self, score, best_on_val_set, idx):
         # ----------------------------------------------- SCORE  MEDIE -------------------------------------------------
         print('\n---------------  Media valori loss e accuratezza sulle varie fold ({}) ----------'.format(best_on_val_set))
 
@@ -84,12 +88,12 @@ class SaveScore():
 
         # ------------------------ SLICE -------------------------
         # nanmean: compute the arithmetic mean along the specified axis, ignoring NaNs
-        accuracy_average = np.nanmean([x for x in self.accuracy_his])
-        precision_average = np.nanmean([x for x in self.precision_his])
-        recall_average = np.nanmean([x for x in self.recall_his])
-        f1_score_average = np.nanmean([x for x in self.f1_score_his])
-        specificity_average = np.nanmean([x for x in self.specificity_his])
-        g_average = np.nanmean([x for x in self.g_his])
+        accuracy_average = np.mean([x for x in self.accuracy_his])
+        precision_average = np.mean([x for x in self.precision_his])
+        recall_average = np.mean([x for x in self.recall_his])
+        f1_score_average = np.mean([x for x in self.f1_score_his])
+        specificity_average = np.mean([x for x in self.specificity_his])
+        g_average = np.mean([x for x in self.g_his])
 
         print('\n ------------------ METRICHE MEDIE SLICE ------------------')
         print('\nAccuratezza: {}'
@@ -100,12 +104,12 @@ class SaveScore():
               '\nMedia delle accuratezze: {}'.format(accuracy_average, precision_average, recall_average, specificity_average,
                                                      f1_score_average, g_average))
         # --------------------- PAZIENTI ------------------------
-        accuracy_paziente_average = np.nanmean([x for x in self.accuracy_paziente_his])
-        precision_paziente_average = np.nanmean([x for x in self.precision_paziente_his])
-        recall_paziente_average = np.nanmean([x for x in self.recall_paziente_his])
-        f1_score_paziente_average = np.nanmean([x for x in self.f1_score_paziente_his])
-        specificity_paziente_average = np.nanmean([x for x in self.specificity_paziente_his])
-        g_paziente_average = np.nanmean([x for x in self.g_paziente_his])
+        accuracy_paziente_average = np.mean([x for x in self.accuracy_paziente_his])
+        precision_paziente_average = np.mean([x for x in self.precision_paziente_his])
+        recall_paziente_average = np.mean([x for x in self.recall_paziente_his])
+        f1_score_paziente_average = np.mean([x for x in self.f1_score_paziente_his])
+        specificity_paziente_average = np.mean([x for x in self.specificity_paziente_his])
+        g_paziente_average = np.mean([x for x in self.g_paziente_his])
 
         print('\n ------------------ METRICHE MEDIE PAZIENTI ------------------')
         print('\nAccuratezza: {}'
@@ -120,7 +124,7 @@ class SaveScore():
 
         # Scrittura su file
         file = open(os.path.join(self.run_folder, "score_{}.txt".format(best_on_val_set)), "a")
-        file.write("\nMEDIA SCORE SULLE {} FOLD\n".format(self.idx + 1))
+        file.write("\nMEDIA SCORE SULLE {} FOLD\n".format(idx + 1))
         file.write("\nScore slice:\nAccuratezza: {}"
                    "\nPrecisione: {}"
                    "\nRecall: {}"

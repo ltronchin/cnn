@@ -15,11 +15,11 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
-augmented = 0
+augmented = 1
 #fill_mode_list = ['constant', 'reflect', 'nearest']
 fill_mode = 'constant'
 load = False
-num_epochs = 250
+num_epochs = 500
 batch = 128
 l1 = 'none'
 l2 = 'none'
@@ -33,7 +33,7 @@ boot_iter = 15
 activation = 'leaky_relu' #relu
 optimiser = 'adam' #rmsprop
 initializer = 'xavier'
-input_dim = (48, 48, 1)
+input_dim = (80, 80, 1)
 batch_norm = True
 allview = False
 view = 'layer'
@@ -109,9 +109,6 @@ for slice_path_ID in slice_path_list:
         ID_paziente, label_paziente = load.ID_paziente()
         slices, labels, ID_paziente_slice = load.slices()
 
-    # Creazione istanza della classe DataAugmentation
-    data_aug = DataAugmentation("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_resize_" + view + ".mat")
-
     # ------------------------------- Creazione istanze classe Alexnet e classe Callbacks ----------------------------------
     alexnet = Alexnet(input_dim = input_dim,
                       l1 = l1,
@@ -141,8 +138,7 @@ for slice_path_ID in slice_path_list:
                       alexnet=alexnet,
                       my_callbacks=my_callbacks,
                       run_folder=run_folder,
-                      load=load,
-                      data_aug = data_aug)
+                      load=load)
 
     run_net.run()
 

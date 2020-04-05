@@ -34,7 +34,7 @@ class EvaluateConvNet():
             # ------------------------------ CARICAMENTO DATI DA CARTELLA DATI SLICE ----------------------------------
             print("\n ------ CARICAMENTO: {} ------ ".format(idx))
             # Caricamento del modello trainato
-            path = self.run_folder + '/model/model_{}.h5'.format(idx)
+            path = self.run_folder + '/model/best_model_fold{}.h5'.format(idx)
             alexnet = models.load_model(path)
 
             # Caricamento label di test
@@ -248,28 +248,48 @@ class EvaluateConvNet():
             # "di tutti i campioni VERAMENTE positivi quale percentuale è stata classificata correttamente?" e si calcola
             # come il rapporto tra i positivi correttamente predetti e tutti i veri positivi
             recall = tp / (tp + fn)
+            if np.isnan(recall):
+                recall = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nRecall is nan")
+                file.close()
 
             # precision: tp / tp + fp -> quantifica quanti dei positivi predetti sono effettivamente positivi, risponde alla domanda
             # "di tutti i campioni PREDETTI positivi quali erano veramente positivi?"
             precision = tp / (tp + fp)
+            if np.isnan(precision):
+                precision = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nPrecision is nan")
+                file.close()
 
             # f1_score è una media ponderata delle metriche Precision e Recall - se anche solo una tra precisione e recall è
             # bassa, l'f1-score sarà basso -
             f1_score = (2 * recall * precision) / (recall + precision)
+            if np.isnan(f1_score):
+                f1_score = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nF1-score is nan")
+                file.close()
 
             # specificità/true negative rate -> misura la frazione di negativi correttamente riconosciuta
             specificity = tn / (tn + fp)
+            if np.isnan(specificity):
+                specificity = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nSpecificity is nan")
+                file.close()
 
             # Media geometrica delle accuratezze: radice quadrata delle recall calcolate per classe (non dipende dalla
             # probabilità a priori)
             g = math.sqrt(recall * specificity)
         else:
             print("Pazienti di una sola classe, gli score sulle singole classi vengono posti a nan")
-            recall = math.nan
-            precision = math.nan
-            f1_score = math.nan
-            specificity = math.nan
-            g = math.nan
+            recall = 0
+            precision = 0
+            f1_score = 0
+            specificity = 0
+            g = 0
 
         print('\nAccuratezza: {}'
               '\nPrecisione: {}'

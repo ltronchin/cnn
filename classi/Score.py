@@ -73,28 +73,48 @@ class Score():
             # "di tutti i campioni VERAMENTE positivi quale percentuale è stata classificata correttamente?" e si calcola
             # come il rapporto tra i positivi correttamente predetti e tutti i veri positivi
             recall = tp / (tp + fn)
+            if np.isnan(recall):
+                recall = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nRecall is nan")
+                file.close()
 
             # precision: tp / tp + fp -> quantifica quanti dei positivi predetti sono effettivamente positivi, risponde alla domanda
             # "di tutti i campioni PREDETTI positivi quali erano veramente positivi?"
             precision = tp / (tp + fp)
+            if np.isnan(precision):
+                precision = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nPrecision is nan")
+                file.close()
 
             # f1_score è una media ponderata delle metriche Precision e Recall - se anche solo una tra precisione e recall è
             # bassa, l'f1-score sarà basso -
             f1_score = (2 * recall * precision) / (recall + precision)
+            if np.isnan(f1_score):
+                f1_score = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nF1-score is nan")
+                file.close()
 
             # specificità/true negative rate -> misura la frazione di negativi correttamente riconosciuta
             specificity = tn / (tn + fp)
+            if np.isnan(specificity):
+                specificity = 0
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file.write("\nSpecificity is nan")
+                file.close()
 
             # Media geometrica delle accuratezze: radice quadrata delle recall calcolate per classe (non dipende dalla
             # probabilità a priori)
             g = math.sqrt(recall * specificity)
         else:
-            print("Pazienti di una sola classe, gli score sulle singole classi vengono posti a nan")
-            recall = math.nan
-            precision = math.nan
-            f1_score = math.nan
-            specificity = math.nan
-            g = math.nan
+            print("Pazienti di una sola classe, gli score sulle singole classi vengono posti a 0")
+            recall = 0
+            precision = 0
+            f1_score = 0
+            specificity = 0
+            g = 0
 
         print('\nAccuratezza: {}'
               '\nPrecisione: {}'
@@ -151,7 +171,7 @@ class Score():
                 accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred, "Slice")
                 auc = self.roc_curve(predictions[:,0], Y_true)
         else:
-            auc = math.nan
+            auc = 0
 
         accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
         specificity_paziente, g_paziente = self.predictions_pazienti(Y_pred)
@@ -236,7 +256,7 @@ class Score():
         plt.figure()
         plt.plot(epochs, acc_history, 'r', label = 'Training accuracy')
         plt.plot(epochs, val_acc_history, 'b', label = 'Validation accuracy')
-        plt.title('Training and validation accuracy fold: {}'.format(self.idx))
+        plt.title('Training and validation accuracy fold: {}'.format(title))
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend()

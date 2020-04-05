@@ -18,20 +18,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xlsxwriter
 import os
+import math
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
-from tensorflow.keras import models
 
 from classi.Slices import Slices
 from classi.SaveScore import SaveScore
 from classi.Score import Score
-
+from classi.Custom_callbacks import Custom_callbacks
 
 class Run_net():
 
     def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
-                 k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load, data_aug):
+                 k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load):
         self.validation_method = validation_method
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
@@ -47,7 +47,6 @@ class Run_net():
         self.n_patient_test = n_patient_test
         self.augmented = augmented
         self.fill_mode = fill_mode
-        self.data_aug = data_aug
 
         self.alexnet = alexnet
         self.my_callbacks = my_callbacks
@@ -73,6 +72,8 @@ class Run_net():
         self.f1_score_paziente_his = []
         self.specificity_paziente_his = []
         self.g_paziente_his = []
+
+        self.save_score = SaveScore(run_folder=self.run_folder,num_epochs=self.num_epochs)
 
     def run(self):
         if self.validation_method[0] == 'bootstrap':
@@ -134,75 +135,54 @@ class Run_net():
 
             # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
             # Data augmentation
-            #total_expand_slice = 15000
 
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
-                step_per_epoch = int(X_train.shape[0] / self.batch)  # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
+                print(self.batch)
+                print(X_train.shape[0])
+                # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
+                step_per_epoch = math.ceil(X_train.shape[0] / (self.batch))
+                print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
             else:
-                # Chiamata alla funzione per l'ESPANSIONE manuale del dataset
-                # X_aug, Y_aug = self.expand_dataset(total_expand_slice, paziente_train, X_train, true_label_train, ID_paziente_slice_train)
-                # print("\n[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}".format(X_aug.shape, Y_aug.shape))
-                # X_train_aug = np.concatenate((X_train, X_aug), axis=0)
-                # Y_train_aug = np.concatenate((Y_train, Y_aug), axis=0)
-                # print("[INFO] -- slice per il training della rete: {}, label {}".format(X_train_aug.shape, Y_train_aug.shape))
 
                 train_datagen = ImageDataGenerator(rotation_range = 175,
-                                                   width_shift_range = (-5, +5),
-                                                   height_shift_range = (-5, +5),
-                                                   shear_range = 20 ,
+                                                   width_shift_range = (-7, +7),
+                                                   height_shift_range = (-7, +7),
+                                                   #shear_range = 20 ,
                                                    horizontal_flip = 'true',
                                                    vertical_flip='true',
                                                    fill_mode = self.fill_mode,
                                                    cval = 0)
 
-                #train_datagen_elastic = ImageDataGenerator(rotation_range = 175,
-                #                                           width_shift_range = (-5, +5),
-                #                                           height_shift_range = (-5, +5),
-                #                                           horizontal_flip = 'true',
-                #                                           vertical_flip='true',
-                #                                           preprocessing_function=lambda x: self.data_aug.elastic_transform(x, [30,40], 5, random_state=None),
-                #                                           fill_mode=self.fill_mode,
-                #                                           cval=0)
-
-                #train_generator = self.multiple_generator(train_datagen, train_datagen_elastic, X_train, Y_train)
-
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
                 print(self.batch)
                 print(X_train.shape[0])
-                step_per_epoch = X_train.shape[0] // (self.batch)
+                step_per_epoch = math.ceil(X_train.shape[0] / (self.batch))
                 print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
 
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = True)
 
             self.how_generator_work(train_datagen, X_train)
-            #self.how_generator_work(train_datagen_elastic, X_train)
             self.how_generator_work(test_datagen, X_val)
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
             # Costruzione del modello
             model = self.alexnet.build_alexnet()
-            # Salvataggio struttura rete e parametri modello
-            if first_iter == 0:
-                self.alexnet.save(self.run_folder, model)
-                first_iter = 1
+
+            custom_call = Custom_callbacks(validation_generator, self.batch, self.run_folder, idx)
             # Fit del modello
             history = model.fit(train_generator,
                                 steps_per_epoch = step_per_epoch,
                                 epochs = self.num_epochs,
                                 validation_data = validation_generator,
-                                validation_steps = X_val.shape[0] // (self.batch),
-                                callbacks = callbacks_list,
+                                validation_steps = math.ceil(X_val.shape[0] / (self.batch)),
+                                callbacks = [custom_call],
                                 verbose=0)
 
             # Salvataggio del modello alla fine del training
             model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)), include_optimizer=False)
-
-            # Caricamento del modello checkpoint -- modello che ha permesso di ottenere la massima accuratezza sul set
-            # di validazione
-            best_on_val_set = models.load_model(self.run_folder + '/model/model_{}.h5'.format(idx))
 
             score = Score(X_test=X_val,
                           Y_test=true_label_val,
@@ -215,14 +195,10 @@ class Run_net():
                           best_on_val_set = 'end_of_training')
 
             # ---------------------------------------- SCORE ----------------------------------------------
-            save_score = SaveScore(idx = idx,
-                                   run_folder = self.run_folder,
-                                   num_epochs = self.num_epochs)
-
-            save_score.save_single_score(score, history, best_on_val_set = 'end_of_training')
+            self.save_score.save_single_score(score, history, best_on_val_set = 'end_of_training')
 
         # ---------------------------------------- SCORE MEDIATO SULLE VARIE FOLD ----------------------------------------------
-        save_score.save_mean_score(score, best_on_val_set = 'end_of_training')
+        self.save_score.save_mean_score(score = score, best_on_val_set = 'end_of_training', idx = idx)
 
     # Codice per eliminare duplicati da una lista
     def remove(self, duplicate_list):
@@ -340,65 +316,3 @@ class Run_net():
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val, callbacks_list
 
-    def multiple_generator(self, train_datagen, train_datagen_clone, X_train, label):
-
-        train_generator = train_datagen.flow(X_train, label, batch_size= self.batch, shuffle = True)
-        train_generator_clone = train_datagen_clone.flow(X_train, label, batch_size = self.batch, shuffle = True)
-        while True:
-            X_train = train_generator.next()
-            X_train_clone = train_generator_clone.next()
-            yield np.concatenate((X_train[0], X_train_clone[0]), axis=0), np.concatenate((X_train[1], X_train_clone[1]), axis=0)
-
-    def expand_dataset(self, total_augmented_slice, paziente_train, X_train, true_label_train, ID_paziente_slice_train):
-        # Creazione slice trasformate per la corrente iterazione -- per ogni slice si applicano 7 trasformazioni (vedi
-        # DataAugmentation per maggiori info).
-        # Il metodo restituisce:
-        #
-        # X_aug: insieme delle slice trasformate
-        # Y_aug: etichette delle slice trasformate
-        # idd_aug: id delle slice trasformate
-
-        # Total_augmented_slice rappresenta il numero di slice che si vogliono selezionare per espandere il dataset:
-        # queste slice vengono campionate in modo randomico da X_aug facendo in modo che per ogni paziente vengano
-        # campionate lo stesso numero di "nuove" slice
-        count = 0
-        augmented_slice_per_patient = total_augmented_slice // paziente_train.shape[0]
-        print("\n[INFO] -- numero di slice da aggiungere per paziente per arrivare a {}: {}".format(total_augmented_slice,
-                                                                                                  augmented_slice_per_patient))
-        number_of_slice_per_patient = []
-
-        X_train_singleidd = []
-        Y_train_singleidd = []
-        ID_paziente_slice_train_singleidd = []
-
-        for n in range(0, paziente_train.shape[0]):
-            for idx in range(ID_paziente_slice_train.shape[0]):
-                if ID_paziente_slice_train[idx] == paziente_train[n]:
-                    X_train_singleidd.append(X_train[idx])
-                    Y_train_singleidd.append(true_label_train[idx])
-                    ID_paziente_slice_train_singleidd.append(ID_paziente_slice_train[idx])
-                    count += 1
-
-            number_of_slice_per_patient.append(count)
-            count = 0
-            print("\n[INFO] -- numero di slice per paziente {}: {}".format(n, number_of_slice_per_patient[n]))
-            X_train_singleidd = np.array(X_train_singleidd)
-            Y_train_singleidd = np.array(Y_train_singleidd)
-            ID_paziente_slice_train_singleidd = np.array(ID_paziente_slice_train_singleidd)
-            X_aug_singleidd, Y_aug_singleidd, idd_aug_singleidd = self.data_aug.augment_data(X_train_singleidd, Y_train_singleidd,
-                                                                                             ID_paziente_slice_train_singleidd,
-                                                                                             augmented_slice_per_patient,
-                                                                                             n)
-            if n == 0:
-                X_aug = X_aug_singleidd
-                Y_aug = Y_aug_singleidd
-                idd_aug = idd_aug_singleidd
-            else:
-                X_aug = np.concatenate((X_aug, X_aug_singleidd), axis=0)
-                Y_aug = np.concatenate((Y_aug, Y_aug_singleidd), axis=0)
-                idd_aug = np.concatenate((idd_aug, idd_aug_singleidd), axis=0)
-            X_train_singleidd = []
-            Y_train_singleidd = []
-            ID_paziente_slice_train_singleidd = []
-            print("[INFO] -- Numero slice ottenute con data augmentation: {}, label: {}, idd: {}".format(X_aug.shape, Y_aug.shape, idd_aug.shape))
-        return X_aug, Y_aug

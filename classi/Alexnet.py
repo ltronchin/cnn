@@ -2,6 +2,7 @@ from tensorflow.keras.initializers import RandomNormal, GlorotNormal, he_uniform
 from tensorflow.keras.optimizers import Adam, RMSprop
 from tensorflow.keras import layers, models
 from tensorflow.keras.utils import plot_model
+from tensorflow.keras import backend as K
 import os
 
 from tensorflow.keras import regularizers
@@ -77,6 +78,7 @@ class Alexnet():
         model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
 
         opt = self.get_opti(self.lr)
+
         model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
 
         return model
@@ -93,13 +95,13 @@ class Alexnet():
 
     def get_kernel_initializer(self, initializer):
         if initializer == 'xavier':
-            kernel = GlorotNormal()
+            kernel = GlorotNormal(seed = 42)
             print('[INFO] -- Inizializzazione pesi: xavier\n')
         elif initializer == 'he_uniform':
-            kernel = he_uniform()
+            kernel = he_uniform(seed = 42)
             print('[INFO] -- Inizializzazione pesi: he_uniform\n')
         else:
-            kernel = RandomNormal(mean = 0., stddev=0.02)
+            kernel = RandomNormal(mean = 0., stddev=0.02, seed = 42)
             print('[INFO] -- Inizializzazione pesi: random\n')
         return kernel
 
@@ -111,16 +113,6 @@ class Alexnet():
             opti = RMSprop(lr = lr)
             print('[INFO] -- Optimiser: rmsprop\n')
         return opti
-
-    # Python pickle module is used for serializing and de-serializing a Python object structure.Any object in Python can
-    # be pickled so that it can be saved on disk. What pickle does is that it “serializes” the object first before
-    # writing it to file.Pickling is a way to convert a python object (list, dict, etc.) into a character stream.The
-    # idea is that this character stream contains all the information necessary to reconstruct the object in another
-    # python script.
-
-    def save(self, run_folder, alexnet):
-        #self.plot_model(run_folder, alexnet)
-        print('[INFO] -- Plot disabled\n')
 
     def plot_model(self, run_folder, alexnet):
         plot_model(alexnet, to_file = os.path.join(run_folder, "model.png"), show_shapes='True', expand_nested='True',
