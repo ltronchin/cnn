@@ -18,8 +18,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xlsxwriter
 import os
-import math
-from tensorflow import  keras
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
@@ -27,8 +25,8 @@ from tensorflow.keras.preprocessing.image import array_to_img
 from classi.Slices import Slices
 from classi.SaveScore import SaveScore
 from classi.Score import Score
-from classi.Metrics_callbacks import Metrics_callbacks
-from classi.LR_schedule_callbacks import LearningRateScheduler
+from classi.MetricsCallback import MetricsCallback
+from classi.LearningRateMonitorCallback import LearningRateMonitorCallback
 
 class Run_net():
 
@@ -76,9 +74,6 @@ class Run_net():
         self.g_paziente_his = []
 
         self.save_score = SaveScore(run_folder=self.run_folder,num_epochs=self.num_epochs)
-        self.LR_SCHEDULE = [(150, 0.0005),
-                            (200, 0.0001),
-                            (300, 0.0005)] # (epoch to start, learning rate) tuples
 
     def run(self):
         if self.validation_method[0] == 'bootstrap':
@@ -93,7 +88,6 @@ class Run_net():
             num_val_samples = len(self.ID_paziente) // self.k_iter  # // si usa per approssimare al più piccolo
             iter = self.k_iter
 
-        first_iter = 0
         # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
         # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
         # le stesse iterazioni dal metodo bootstrap
@@ -103,6 +97,7 @@ class Run_net():
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.bootstrap(idx, index)
             else:
                 paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.kfold(idx, num_val_samples)
+
 
             # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
             np.save(os.path.join(self.run_folder, "data_pazienti/paziente_val_{}.h5".format(idx)), paziente_val, allow_pickle = False)
@@ -173,12 +168,12 @@ class Run_net():
             self.how_generator_work(test_datagen, X_val)
 
             # ---------------------------------------------- MODELLO ---------------------------------------------------
-            # Costruzione del modello
+            # Costruzione di un nuovo modello
             model = self.alexnet.build_alexnet()
 
-            metrics= Metrics_callbacks(validation_generator, self.batch, self.run_folder, idx)
-            #learning_scheduler = LearningRateScheduler(self.lr_schedule)
-            callbacks_list = [metrics]
+            lr_monitor = LearningRateMonitorCallback(self.run_folder, idx)
+            metrics= MetricsCallback(validation_generator, self.batch, self.run_folder, idx)
+            callbacks_list = [metrics, lr_monitor]
 
             # Fit del modello
             history = model.fit(train_generator,
@@ -187,7 +182,7 @@ class Run_net():
                                 validation_data = validation_generator,
                                 validation_steps = X_val.shape[0] // (self.batch),
                                 callbacks = callbacks_list,
-                                verbose=1)
+                                verbose=0)
 
             # Salvataggio del modello alla fine del training
             model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)), include_optimizer=False)
@@ -321,13 +316,4 @@ class Run_net():
         print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val
-
-    def lr_schedule(self, epoch, lr):
-        """Helper function to retrieve the scheduled learning rate based on epoch."""
-        if epoch < self.LR_SCHEDULE[0][0] or epoch > self.LR_SCHEDULE[-1][0]:
-            return lr
-        for i in range(len(self.LR_SCHEDULE)):
-            if epoch == self.LR_SCHEDULE[i][0]:
-                return self.LR_SCHEDULE[i][1]
-        return lr
 

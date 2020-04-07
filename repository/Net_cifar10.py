@@ -92,16 +92,6 @@ class Net_cifar10():
             print('rmsprop')
         return opti
 
-    # Python pickle module is used for serializing and de-serializing a Python object structure.Any object in Python can
-    # be pickled so that it can be saved on disk. What pickle does is that it “serializes” the object first before
-    # writing it to file.Pickling is a way to convert a python object (list, dict, etc.) into a character stream.The
-    # idea is that this character stream contains all the information necessary to reconstruct the object in another
-    # python script.
-
-    def save(self, run_folder, alexnet):
-        #self.plot_model(run_folder, alexnet)
-        print('Plot disabled')
-
     def plot_model(self, run_folder, alexnet):
         plot_model(alexnet, to_file = os.path.join(run_folder, "model.png"), show_shapes='True', expand_nested='True',
                    dpi=1200)

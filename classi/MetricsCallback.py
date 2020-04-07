@@ -4,14 +4,14 @@ import numpy as np
 import os
 import itertools
 import math
-import tensorflow as tf
-from sklearn.metrics import confusion_matrix
 
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score, precision_score, recall_score
+
 from tensorflow import keras
 
 
-class Metrics_callbacks(keras.callbacks.Callback):
+class MetricsCallback(keras.callbacks.Callback):
 
     def __init__(self, val_data, batch_size, run_folder, iter):
         super().__init__()

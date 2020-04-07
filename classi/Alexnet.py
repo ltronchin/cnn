@@ -2,13 +2,13 @@ from tensorflow.keras.initializers import RandomNormal, GlorotNormal, he_uniform
 from tensorflow.keras.optimizers import Adam, RMSprop
 from tensorflow.keras import layers, models
 from tensorflow.keras.utils import plot_model
-from tensorflow.keras import backend as K
 import os
 
 from tensorflow.keras import regularizers
 class Alexnet():
 
-    def __init__(self, input_dim, l1, l2, lr, cnn_activation, cnn_optimiser, cnn_initializer, run_folder, batch_norm):
+    def __init__(self, input_dim, l1, l2, lr, cnn_activation, cnn_optimiser, cnn_initializer, run_folder, batch_norm,
+                 drop, drop_list, filter_list, kernel_size):
         self.input_dim = input_dim
         self.lr = lr
         self.l1 = l1
@@ -18,68 +18,83 @@ class Alexnet():
         self.cnn_initializer = cnn_initializer
         self.run_folder = run_folder
         self.batch_norm = batch_norm
+        self.drop = drop
+        self.drop_list = drop_list
+        self.filter_list = filter_list
+        self.kernel_size = kernel_size
 
     def build_alexnet(self):
         # --------------------- Inizializzazione pesi -------------------------------
         kernel_init = self.get_kernel_initializer(self.cnn_initializer)
         # ----------------------- Definizione modello -----------------------------
         model = models.Sequential()
-        # Convoluzione 1
-        model.add(layers.Conv2D(32, (3, 3), kernel_initializer = kernel_init, padding='same', input_shape = self.input_dim))
+        # Convoluzione - attivazione - batch normalization - dropout
+        model.add(layers.Conv2D(self.filter_list[0], (self.kernel_size, self.kernel_size), kernel_initializer = kernel_init, padding='same', input_shape = self.input_dim))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        # Convoluzione 2
-        model.add(layers.Conv2D(32, (3, 3), kernel_initializer = kernel_init, padding='same'))
+        if self.drop[0] == True:
+            model.add(layers.Dropout(self.drop_list[0]))
+        # Convoluzione - attivazione - batch normalization - dropout
+        model.add(layers.Conv2D(self.filter_list[1], (self.kernel_size, self.kernel_size), kernel_initializer = kernel_init, padding='same'))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        # Pooling 1
+        if self.drop[1] == True:
+            model.add(layers.Dropout(self.drop_list[1]))
+        # Pooling
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.20))
 
-        # Convoluzione 3
-        model.add(layers.Conv2D(64, (3, 3), kernel_initializer = kernel_init, padding='same'))
+        # Convoluzione - attivazione - batch normalization - dropout
+        model.add(layers.Conv2D(self.filter_list[2], (self.kernel_size, self.kernel_size), kernel_initializer = kernel_init, padding='same'))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        # Convoluzione 4
-        model.add(layers.Conv2D(64, (3, 3), kernel_initializer = kernel_init, padding='same'))
+        if self.drop[2] == True:
+            model.add(layers.Dropout(self.drop_list[2]))
+        # Convoluzione - attivazione - batch normalization - dropout
+        model.add(layers.Conv2D(self.filter_list[3], (self.kernel_size, self.kernel_size), kernel_initializer = kernel_init, padding='same'))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        # Pooling 2
+        if self.drop[3] == True:
+            model.add(layers.Dropout(self.drop_list[3]))
+        # Pooling
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.25))
 
-        # Convoluzione 5
-        model.add(layers.Conv2D(128, (3, 3), kernel_initializer = kernel_init, padding='same'))
+        # Convoluzione - attivazione - batch normalization - dropout
+        model.add(layers.Conv2D(self.filter_list[4], (self.kernel_size, self.kernel_size), kernel_initializer = kernel_init, padding='same'))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        # Convoluzione 6
-        model.add(layers.Conv2D(128, (3, 3), kernel_initializer = kernel_init, padding='same'))
+        if self.drop[4] == True:
+            model.add(layers.Dropout(self.drop_list[4]))
+        # Convoluzione - attivazione - batch normalization - dropout
+        model.add(layers.Conv2D(self.filter_list[5], (self.kernel_size, self.kernel_size), kernel_initializer = kernel_init, padding='same'))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        # Pooling 3
+        if self.drop[5] == True:
+            model.add(layers.Dropout(self.drop_list[5]))
+        # Pooling
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Dropout(0.30))
 
         model.add(layers.Flatten())
 
-        # Fully connected 1
-        model.add(layers.Dense(128, kernel_initializer = kernel_init))
+        # Fully connected - attivazione - batch normalization - dropout
+        model.add(layers.Dense(self.filter_list[6], kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
-        model.add(layers.Dropout(0.35))
+        if self.drop[6] == True:
+            model.add(layers.Dropout(self.drop_list[6]))
 
         model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
 
         opt = self.get_opti(self.lr)
 
         model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+        model.summary()
 
         return model
 
@@ -110,7 +125,7 @@ class Alexnet():
             opti = Adam(lr = lr)
             print('[INFO] -- Optimser: adam\n')
         elif self.cnn_optimiser == 'rmsprop':
-            opti = RMSprop(lr = lr)
+            opti = RMSprop(lr = lr, momentum=0.9)
             print('[INFO] -- Optimiser: rmsprop\n')
         return opti
 

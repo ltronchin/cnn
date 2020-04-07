@@ -6,7 +6,6 @@ from classi.Alexnet import Alexnet
 from classi.Load import Load
 from classi.My_callbacks import My_callbacks
 from classi.Run_net import Run_net
-from classi.DataAugmentation import DataAugmentation
 from classi.EvaluateConvNet import EvaluateConvNet
 
 # --------------------------- Aggiunta ambiente virtuale tensorflow i path di Graphviz e CUPTI ------------------------
@@ -38,8 +37,13 @@ batch_norm = True
 allview = False
 view = 'layer'
 
+drop = [True, True, True, True, True, True, True]
+drop_list = [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35]
+filter_list = [32, 32, 64, 64, 128, 128, 128]
+kernel_size = 3
+
 #slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
-slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
+slice_path_list = ["ID5"]
 
 for slice_path_ID in slice_path_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -64,13 +68,14 @@ for slice_path_ID in slice_path_list:
         file.write("View: {}\n".format(view))
     file.write("Model: Alexnet\n")
     file.write("Validation method: {}\n".format(validation_method))
-    file.write("Layer: 32, 32, 64, 64, 128, 128, 128 \n")
-    file.write("Kernel: 3, 3, 3, 3, 3, 3\n")
-    file.write("Regularization: {}, {}\n".format(l1, l2))
+    file.write("Layer: {} \n".format(filter_list))
+    file.write("Kernel_size: {}\n".format(kernel_size))
+    file.write("L1_L2_regularization: {}, {}\n".format(l1, l2))
     file.write("Activation: {}\n".format(activation))
     file.write("Optimiser: {}\n".format(optimiser))
     file.write("Initializer: {}\n".format(initializer))
-    file.write("Dropout: 0.20, 0.25, 0.30, 0.35 \n")
+    file.write("Dropout: {}\n".format(drop))
+    file.write("Dropout_value: {}\n".format(drop_list))
     file.write("Batch normalization: {}\n".format(batch_norm))
     file.write("Learning rate: {}\n".format(lr))
     file.write("Epoche: {}, Batch size: {}\n".format(num_epochs, batch))
@@ -119,7 +124,12 @@ for slice_path_ID in slice_path_list:
                       cnn_optimiser = optimiser,
                       cnn_initializer = initializer,
                       run_folder = run_folder,
-                      batch_norm = batch_norm)
+                      batch_norm = batch_norm,
+                      drop = drop,
+                      drop_list = drop_list,
+                      filter_list = filter_list,
+                      kernel_size = kernel_size)
+
     my_callbacks = My_callbacks(run_folder)
 
     # ---------------------------------------- Creazione istanza classe Kfold ----------------------------------------------
