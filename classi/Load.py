@@ -55,7 +55,7 @@ class Load():
         labels = []
         ID_paziente_slice = []
         for idx in range(self.data.shape[0]):
-            slices.append(img_to_array(self.data[idx][0]))  # immagini
+            slices.append(img_to_array(self.data[idx][0], dtype='double'))  # immagini
             ID_paziente_slice.append(self.data[idx][1])  # ID_paziente
             labels.append(self.data[idx][2][0])  # delle labels
 
@@ -65,6 +65,7 @@ class Load():
         ID_paziente_slice = np.array(ID_paziente_slice)
 
         print("[INFO]-- Numero e dimensione slice {}".format(slices.shape))
+        print(type(slices[1][0][0][0]))
 
         return slices, labels, ID_paziente_slice
 

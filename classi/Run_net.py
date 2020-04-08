@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xlsxwriter
 import os
+import math
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
@@ -27,11 +28,12 @@ from classi.SaveScore import SaveScore
 from classi.Score import Score
 from classi.MetricsCallback import MetricsCallback
 from classi.LearningRateMonitorCallback import LearningRateMonitorCallback
+from classi.LearningRateScheduler import LearningRateScheduler
 
 class Run_net():
 
     def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
-                 k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load):
+                 k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load, lr_decay):
         self.validation_method = validation_method
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
@@ -74,6 +76,19 @@ class Run_net():
         self.g_paziente_his = []
 
         self.save_score = SaveScore(run_folder=self.run_folder,num_epochs=self.num_epochs)
+
+        # (epoch to start, learning rate) tuples
+        self.LR_SCHEDULE = [(10, 0.0001), (60, 0.00001), (10, 0.000001)]
+        self.lr_decay = lr_decay
+
+    def lr_schedule(self, epoch, lr):
+        """Helper function to retrieve the scheduled learning rate based on epoch."""
+        if epoch < self.LR_SCHEDULE[0][0] or epoch > self.LR_SCHEDULE[-1][0]:
+            return lr
+        for i in range(len(self.LR_SCHEDULE)):
+            if epoch == self.LR_SCHEDULE[i][0]:
+                return self.LR_SCHEDULE[i][1]
+        return lr
 
     def run(self):
         if self.validation_method[0] == 'bootstrap':
@@ -139,11 +154,7 @@ class Run_net():
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
-                print(self.batch)
-                print(X_train.shape[0])
                 # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
-                step_per_epoch = X_train.shape[0] // (self.batch)
-                print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
             else:
 
                 train_datagen = ImageDataGenerator(rotation_range = 175,
@@ -156,13 +167,17 @@ class Run_net():
                                                    cval = 0)
 
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
-                print(self.batch)
-                print(X_train.shape[0])
-                step_per_epoch = X_train.shape[0] // (self.batch)
-                print("\nTRAINING DELLA RETE \n[INFO] -- Step per epoca: {}".format(step_per_epoch))
 
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = False)
+            print(self.batch)
+            print(X_train.shape[0])
+            print(X_val.shape[0])
+            step_per_epoch = math.ceil(X_train.shape[0] / (self.batch))
+            step_per_epoch_val = math.ceil(X_val.shape[0] / (self.batch))
+            print("\nTRAINING DELLA RETE \n[INFO] "
+                  "-- Step per epoca set di training: {}\n"
+                  "-- Step per epoca set di validazione: {}".format(step_per_epoch, step_per_epoch_val))
 
             self.how_generator_work(train_datagen, X_train)
             self.how_generator_work(test_datagen, X_val)
@@ -173,14 +188,18 @@ class Run_net():
 
             lr_monitor = LearningRateMonitorCallback(self.run_folder, idx)
             metrics= MetricsCallback(validation_generator, self.batch, self.run_folder, idx)
-            callbacks_list = [metrics, lr_monitor]
+            lr_scheduling = LearningRateScheduler(self.lr_schedule)
+            if self.lr_decay == True:
+                callbacks_list = [metrics, lr_monitor, lr_scheduling]
+            else:
+                callbacks_list = [metrics]
 
             # Fit del modello
             history = model.fit(train_generator,
                                 steps_per_epoch = step_per_epoch,
                                 epochs = self.num_epochs,
                                 validation_data = validation_generator,
-                                validation_steps = X_val.shape[0] // (self.batch),
+                                validation_steps = step_per_epoch_val,
                                 callbacks = callbacks_list,
                                 verbose=0)
 

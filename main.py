@@ -14,15 +14,15 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
-augmented = 1
+augmented = 0
 #fill_mode_list = ['constant', 'reflect', 'nearest']
 fill_mode = 'constant'
 load = False
-num_epochs = 500
+num_epochs = 250
 batch = 128
 l1 = 'none'
-l2 = 'none'
-lr = 0.0001
+l2 = 'none' #'True: 0.001'
+lr = 0.001
 validation_method = 'kfold' #bootstrap
 # Parametri kfold
 k = 10
@@ -30,20 +30,22 @@ k = 10
 n_patient_test = 10
 boot_iter = 15
 activation = 'leaky_relu' #relu
-optimiser = 'adam' #rmsprop
+optimiser = 'adam'  #rmsprop
 initializer = 'xavier'
 input_dim = (80, 80, 1)
 batch_norm = True
 allview = False
 view = 'layer'
+lr_decay = False
 
 drop = [True, True, True, True, True, True, True]
-drop_list = [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35]
-filter_list = [32, 32, 64, 64, 128, 128, 128]
+drop_list = [0.20, 0.20, 0.30, 0.30, 0.40, 0.40, 0.50]
+
+filter_list = [32, 32, 64, 64, 128, 128, 256]
 kernel_size = 3
 
-#slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
-slice_path_list = ["ID5"]
+slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
+#slice_path_list = ["ID5"]
 
 for slice_path_ID in slice_path_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -79,7 +81,7 @@ for slice_path_ID in slice_path_list:
     file.write("Batch normalization: {}\n".format(batch_norm))
     file.write("Learning rate: {}\n".format(lr))
     file.write("Epoche: {}, Batch size: {}\n".format(num_epochs, batch))
-    file.write("Learning rate decay:{}\n".format(False))
+    file.write("Learning rate decay:{}\n".format(lr_decay))
     if validation_method == 'bootstrap':
         file.write("Numero iterazioni bootstrap: {}\n".format(boot_iter))
         file.write("Campioni di test estratti ad ogni iterazione: {}\n".format(n_patient_test))
@@ -149,7 +151,8 @@ for slice_path_ID in slice_path_list:
                       alexnet=alexnet,
                       my_callbacks=my_callbacks,
                       run_folder=run_folder,
-                      load=load)
+                      load=load,
+                      lr_decay = lr_decay)
 
     run_net.run()
 

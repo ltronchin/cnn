@@ -6,7 +6,7 @@ import itertools
 import math
 
 from sklearn.metrics import confusion_matrix
-from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 from tensorflow import keras
 
@@ -37,7 +37,7 @@ class MetricsCallback(keras.callbacks.Callback):
         if self.validation_data is None:
             raise RuntimeError('Requires validation data.')
 
-        batches = len(self.validation_data) - 1
+        batches = len(self.validation_data)
         #total = batches * self.batch_size
 
         Y_pred = []
@@ -64,10 +64,12 @@ class MetricsCallback(keras.callbacks.Callback):
 
         val_pred = np.asarray(list(itertools.chain.from_iterable(Y_pred)))
         val_true = np.asarray(list(itertools.chain.from_iterable(Y_true)))
+        #print("Callback %d" % (val_pred.shape))
 
         # Calcolo delle metriche
         conf_mat = confusion_matrix(val_true, val_pred, labels=[0, 1])
         tn, fp, fn, tp = conf_mat.ravel()
+        _val_accuracy = accuracy_score(val_true, val_pred)
         _val_specificity = tn / (tn + fp)
         _val_f1 = f1_score(val_true, val_pred)
         _val_precision = precision_score(val_true, val_pred)
@@ -80,22 +82,28 @@ class MetricsCallback(keras.callbacks.Callback):
         self.val_recalls.append(_val_recall)
         self.val_g.append(_val_g)
 
-        print("\n— val_f1: % f "
+        print("\n EPOCH: %d"
+              "— val_acc: % f "
+              "— val_f1: % f "
               "— val_precision: % f "
               "— val_recall % f "
               "— val_g % f "
-              "— val_specificity % f" % (_val_f1, _val_precision,_val_recall, _val_g, _val_specificity))
+              "— val_specificity % f" % (epoch, _val_accuracy,
+                                         _val_f1, _val_precision,
+                                         _val_recall, _val_g, _val_specificity))
 
         # Model checkpoint
-        current_g = _val_g
-        if np.greater(current_g, self.best_g):
-            self.best_g = current_g
-            self.model.save(os.path.join(self.run_folder, "model/best_model_gscore_fold%d.h5" % (self.iter)))
-
-        current_f1 = _val_f1
-        if np.greater(current_f1, self.best_f1):
-            self.best_f1 = current_f1
-            self.model.save(os.path.join(self.run_folder, "model/best_model_f1score_fold%d.h5" % (self.iter)))
+        if epoch >= 100:
+            current_g = _val_g
+            if np.greater(current_g, self.best_g):
+                self.best_g = current_g
+                self.model.save(os.path.join(self.run_folder, "model/best_model_gscore%d_fold%d.h5" % (epoch, self.iter)))
+                self.model.save(os.path.join(self.run_folder, "model/best_model_gscore_fold%d.h5" % (self.iter)))
+            current_f1 = _val_f1
+            if np.greater(current_f1, self.best_f1):
+                self.best_f1 = current_f1
+                self.model.save(os.path.join(self.run_folder, "model/best_model_f1score%d_fold%d.h5" % (epoch, self.iter)))
+                self.model.save(os.path.join(self.run_folder, "model/best_model_f1score_fold%d.h5" % (self.iter)))
 
         return
 
@@ -106,7 +114,7 @@ class MetricsCallback(keras.callbacks.Callback):
 
         plt.figure()
         plt.plot(epochs, self.val_g, 'k', label='Val mean of accuracy')
-        plt.plot(epochs, self.val_f1s, 'y', label='Val f1-score')
+        #plt.plot(epochs, self.val_f1s, 'y', label='Val f1-score')
         plt.xlabel('Epochs')
         plt.ylabel('Validation score')
         plt.legend()
