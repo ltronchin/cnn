@@ -37,7 +37,7 @@ class EvaluateConvNet():
             alexnet = models.load_model(path)
 
             # Caricamento label di test
-            path = self.run_folder + '/data/true_label_val_{}.h5.npy'.format(idx)
+            path = self.run_folder + '/data/Y_val_{}.h5.npy'.format(idx)
             Y_test = np.load(path)
             Y_true = Y_test[:, 0]  # verità
             print('Shape tensore Y_true: {}'.format(Y_true.shape))
@@ -65,16 +65,12 @@ class EvaluateConvNet():
 
             # -------------------------------------- CLASSIFICAZIONE ---------------------------------------------------
             # Calcolo predizioni slice
-            # L'output di model predict è una distribuzione di probabilità sulle 2 classi -> per ogni campione in input
+            # L'output di model predict è una distribuzione di probabilità sulle 2 Class -> per ogni campione in input
             # la rete fornisce in output un vettore bidimensionale
             predictions = alexnet.predict(X_test)
             print('Shape tensore predictions: {}'.format(predictions.shape))
 
-            Y_pred = []
-            for j in range(predictions.shape[0]):
-                Y_pred.append(np.argmax(predictions[j]))
-
-            Y_pred = np.array(Y_pred)
+            Y_pred = predictions.round()
 
             # ---------------------------------------- CALCOLO PERFORMANCE SLICE ---------------------------------------
             print("\nSLICE")
@@ -99,7 +95,7 @@ class EvaluateConvNet():
             self.specificity_paziente_his.append(specificity_paziente)
             self.g_paziente_his.append(g_paziente)
 
-            self.roc_curve(predictions[:,1], Y_true, idx)
+            self.roc_curve(predictions, Y_true, idx)
 
         # --------------------------------------------- VALORI MEDI ----------------------------------------------------
         accuracy_average = np.nanmean([x for x in self.accuracy_his])
@@ -115,9 +111,12 @@ class EvaluateConvNet():
               '\nRecall: {}'
               '\nSpecificità: {}'
               '\nF1-score: {}'
-              '\nMedia delle accuratezze: {}'.format(accuracy_average, precision_average, recall_average,
+              '\nMedia delle accuratezze: {}'.format(accuracy_average,
+                                                     precision_average,
+                                                     recall_average,
                                                      specificity_average,
-                                                     f1_score_average, g_average))
+                                                     f1_score_average,
+                                                     g_average))
 
         accuracy_paziente_average = np.nanmean([x for x in self.accuracy_paziente_his])
         precision_paziente_average = np.nanmean([x for x in self.precision_paziente_his])
@@ -132,9 +131,11 @@ class EvaluateConvNet():
               '\nRecall: {}'
               '\nSpecificità: {}'
               '\nF1-score: {}'
-              '\nMedia delle accuratezze: {}'.format(accuracy_paziente_average, precision_paziente_average,
+              '\nMedia delle accuratezze: {}'.format(accuracy_paziente_average,
+                                                     precision_paziente_average,
                                                      recall_paziente_average,
-                                                     specificity_paziente_average, f1_score_paziente_average,
+                                                     specificity_paziente_average,
+                                                     f1_score_paziente_average,
                                                      g_paziente_average))
 
         # Scrittura su file
@@ -283,7 +284,7 @@ class EvaluateConvNet():
             # probabilità a priori)
             g = math.sqrt(recall * specificity)
         else:
-            print("Pazienti di una sola classe, gli score sulle singole classi vengono posti a nan")
+            print("Pazienti di una sola classe, gli score sulle singole Class vengono posti a nan")
             recall = 0
             precision = 0
             f1_score = 0

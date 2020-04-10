@@ -1,18 +1,3 @@
-# Bootstrap: estrazione casuale dei campioni con reintroduzione per creare N "nuovi"
-# dataset a partire da quello di partenza (numero iterazioni Bootstrap)
-
-# Nella formazione del nuovo dataset, ad ogni estrazione randomica il campione
-# estratto viene poi reinserito nel set di partenza per poi procedere ad una nuova estrazione.
-# Quindi reinserendo i campioni nel set originale, nulla vieta che questi possano essere
-# nuovamente estratti per far parte del "nuovo" dataset. Il numero di estrazioni per
-# la formazione del dataset è pari al numero di campioni inzialmente contenuti nel
-# set di partenza, questo perché il nuovo dataset deve avere la stessa dimensione del dataset di partenza.
-
-# CREAZIONE TRAINING E TEST
-# TRAINING: con un dataset di dime campioni, occorrono dime estrazioni con reintroduzione
-# per costruire il set di training. Non è detto che tutti i campioni vengano estratti,
-# i campioni NON estratti dal set di partenza vanno a formare il set di TEST
-
 from sklearn.utils import resample
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,17 +8,34 @@ import math
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
 
-from classi.Slices import Slices
-from classi.SaveScore import SaveScore
-from classi.Score import Score
-from classi.MetricsCallback import MetricsCallback
-from classi.LearningRateMonitorCallback import LearningRateMonitorCallback
-from classi.LearningRateScheduler import LearningRateScheduler
+from Class.Slices import Slices
+from Class.SaveScore import SaveScore
+from Class.Score import Score
+from Callbacks.MetricsCallback import MetricsCallback
+from Callbacks.LearningRateMonitorCallback import LearningRateMonitorCallback
+from Callbacks.LearningRateScheduler import LearningRateScheduler
 
 class Run_net():
 
-    def __init__(self,validation_method, ID_paziente, label_paziente, slices, labels, ID_paziente_slice, num_epochs, batch, boot_iter,
-                 k_iter, n_patient_test, augmented, fill_mode, alexnet, my_callbacks, run_folder, load, lr_decay):
+    def __init__(self,
+                 validation_method,
+                 ID_paziente,
+                 label_paziente,
+                 slices,
+                 labels,
+                 ID_paziente_slice,
+                 num_epochs,
+                 batch,
+                 boot_iter,
+                 k_iter,
+                 n_patient_test,
+                 augmented,
+                 fill_mode,
+                 alexnet,
+                 my_callbacks,
+                 run_folder,
+                 lr_decay):
+
         self.validation_method = validation_method
         self.ID_paziente = ID_paziente
         self.label_paziente = label_paziente
@@ -53,27 +55,6 @@ class Run_net():
         self.alexnet = alexnet
         self.my_callbacks = my_callbacks
         self.run_folder = run_folder
-        self.load = load
-
-        self.all_history = []
-        self.all_acc_history = []
-        self.all_loss_history = []
-        self.all_val_acc_history = []
-        self.all_val_loss_history = []
-
-        self.accuracy_his = []
-        self.precision_his = []
-        self.recall_his = []
-        self.f1_score_his = []
-        self.specificity_his = []
-        self.g_his = []
-
-        self.accuracy_paziente_his = []
-        self.precision_paziente_his = []
-        self.recall_paziente_his = []
-        self.f1_score_paziente_his = []
-        self.specificity_paziente_his = []
-        self.g_paziente_his = []
 
         self.save_score = SaveScore(run_folder=self.run_folder,num_epochs=self.num_epochs)
 
@@ -82,7 +63,6 @@ class Run_net():
         self.lr_decay = lr_decay
 
     def lr_schedule(self, epoch, lr):
-        """Helper function to retrieve the scheduled learning rate based on epoch."""
         if epoch < self.LR_SCHEDULE[0][0] or epoch > self.LR_SCHEDULE[-1][0]:
             return lr
         for i in range(len(self.LR_SCHEDULE)):
@@ -107,19 +87,19 @@ class Run_net():
         # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
         # le stesse iterazioni dal metodo bootstrap
         np.random.seed(42)
-        for idx in range(iter):
+        for self.idx in range(iter):
             if self.validation_method[0] == 'bootstrap':
-                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.bootstrap(idx, index)
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.bootstrap(self.idx, index)
             else:
-                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.kfold(idx, num_val_samples)
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.kfold(self.idx, num_val_samples)
 
 
             # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
-            np.save(os.path.join(self.run_folder, "data_pazienti/paziente_val_{}.h5".format(idx)), paziente_val, allow_pickle = False)
-            np.save(os.path.join(self.run_folder, "data_pazienti/lab_paziente_val_{}.h5".format(idx)), lab_paziente_val, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data_pazienti/paziente_val_{}.h5".format(self.idx)), paziente_val, allow_pickle = False)
+            np.save(os.path.join(self.run_folder, "data_pazienti/lab_paziente_val_{}.h5".format(self.idx)), lab_paziente_val, allow_pickle=False)
 
             # Chiamata per la creazione di un foglio excel che mostra la suddivisione dei pazienti in training e test
-            self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train, idx)
+            self.write_excel(lab_paziente_val, paziente_val, lab_paziente_train, paziente_train, self.idx)
 
             # --------------------------------------------- SLICE -----------------------------------------------------
             # Divisione slice in TRAINING e VALIDATION in base allo split dei pazienti: le slice di un paziente non possono
@@ -132,18 +112,18 @@ class Run_net():
                                    paziente_val = paziente_val,
                                    paziente_test = paziente_val,
                                    run_folder = self.run_folder,
-                                   idx = idx)
+                                   idx = self.idx)
 
-            X_val, Y_val, true_label_val, ID_paziente_slice_val = create_slices.val()
-            X_train, Y_train, true_label_train, ID_paziente_slice_train = create_slices.train()
+            X_val, Y_val, ID_paziente_slice_val = create_slices.val()
+            X_train, Y_train, ID_paziente_slice_train = create_slices.train()
 
             # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
-            np.save(os.path.join(self.run_folder, "data/X_train_{}.h5".format(idx)), X_train, allow_pickle =False)
-            np.save(os.path.join(self.run_folder, "data/true_label_train_{}.h5".format(idx)), true_label_train, allow_pickle=False)
-            np.save(os.path.join(self.run_folder, "data/ID_paziente_slice_train_{}.h5".format(idx)), ID_paziente_slice_train, allow_pickle=False)
-            np.save(os.path.join(self.run_folder, "data/X_val_{}.h5".format(idx)), X_val, allow_pickle=False)
-            np.save(os.path.join(self.run_folder, "data/true_label_val_{}.h5".format(idx)), true_label_val, allow_pickle=False)
-            np.save(os.path.join(self.run_folder, "data/ID_paziente_slice_val_{}.h5".format(idx)), ID_paziente_slice_val, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/X_train_{}.h5".format(self.idx)), X_train, allow_pickle =False)
+            np.save(os.path.join(self.run_folder, "data/Y_train_{}.h5".format(self.idx)), Y_train, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/ID_paziente_slice_train_{}.h5".format(self.idx)), ID_paziente_slice_train, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/X_val_{}.h5".format(self.idx)), X_val, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/Y_val_{}.h5".format(self.idx)), Y_val, allow_pickle=False)
+            np.save(os.path.join(self.run_folder, "data/ID_paziente_slice_val_{}.h5".format(self.idx)), ID_paziente_slice_val, allow_pickle=False)
 
             print("\n[INFO] -- Numero slice per la validazione: {}, label: {}".format(X_val.shape[0], Y_val.shape[0]))
             print("[INFO] -- Numero slice per il training: {}, label: {}".format(X_train.shape[0], Y_train.shape[0]))
@@ -154,7 +134,6 @@ class Run_net():
             if self.augmented == 0:
                 train_datagen = ImageDataGenerator()
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
-                # ad ogni epoca si fa in modo che tutti i campioni di training passino per la rete
             else:
 
                 train_datagen = ImageDataGenerator(rotation_range = 175,
@@ -186,8 +165,8 @@ class Run_net():
             # Costruzione di un nuovo modello
             model = self.alexnet.build_alexnet()
 
-            lr_monitor = LearningRateMonitorCallback(self.run_folder, idx)
-            metrics= MetricsCallback(validation_generator, self.batch, self.run_folder, idx)
+            lr_monitor = LearningRateMonitorCallback(self.run_folder, self.idx)
+            metrics= MetricsCallback(validation_generator, self.batch, self.run_folder, self.idx)
             lr_scheduling = LearningRateScheduler(self.lr_schedule)
             if self.lr_decay == True:
                 callbacks_list = [metrics, lr_monitor, lr_scheduling]
@@ -204,23 +183,23 @@ class Run_net():
                                 verbose=0)
 
             # Salvataggio del modello alla fine del training
-            model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(idx)), include_optimizer=False)
+            model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(self.idx)), include_optimizer=False)
 
-            score = Score(X_test=X_val,
-                          Y_test=true_label_val,
+            self.score = Score(X_test=X_val,
+                          Y_test=Y_val,
                           ID_paziente_slice_test=ID_paziente_slice_val,
-                          idx=idx,
+                          idx=self.idx,
                           alexnet=model,
                           run_folder=self.run_folder,
                           paziente_test=paziente_val,
                           label_paziente_test=lab_paziente_val,
-                          best_on_val_set = 'end_of_training')
+                          model_to_evaluate = 'end_of_training')
 
             # ---------------------------------------- SCORE ----------------------------------------------
-            self.save_score.save_single_score(score, history, best_on_val_set = 'end_of_training')
+            self.save_score.save_single_score(self.score, history, best_on_val_set = 'end_of_training')
 
         # ---------------------------------------- SCORE MEDIATO SULLE VARIE FOLD ----------------------------------------------
-        self.save_score.save_mean_score(score = score, best_on_val_set = 'end_of_training', idx = idx)
+        self.save_score.save_mean_score(score = self.score, best_on_val_set = 'end_of_training', idx = self.idx)
 
     # Codice per eliminare duplicati da una lista
     def remove(self, duplicate_list):
@@ -263,10 +242,9 @@ class Run_net():
         workbook_train.close()
 
     def how_generator_work(self, datagen, X):
-        #im = X[1]
-        #im = im.reshape((1,) + im.shape)
+
         generator = datagen.flow(X, batch_size = 64, shuffle = True)
-        # Iterator restituisce un batch di immagini per ogni iterazione
+        # Iterator restituisce una batch di immagini per ogni iterazione
         i = 0
         plt.figure(figsize=(12, 12))
         for X_batch in generator:
@@ -286,7 +264,23 @@ class Run_net():
         plt.show()
 
     def bootstrap(self, idx, index):
-        # ------------------------------------ DIVISIONE SET PER PAZIENTI -------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
+        # Bootstrap: estrazione casuale dei campioni con reintroduzione per creare N "nuovi"
+        # dataset a partire da quello di partenza (numero iterazioni Bootstrap)
+
+        # Nella formazione del nuovo dataset, ad ogni estrazione randomica il campione
+        # estratto viene poi reinserito nel set di partenza per poi procedere ad una nuova estrazione.
+        # Quindi reinserendo i campioni nel set originale, nulla vieta che questi possano essere
+        # nuovamente estratti per far parte del "nuovo" dataset. Il numero di estrazioni per
+        # la formazione del dataset è pari al numero di campioni inzialmente contenuti nel
+        # set di partenza, questo perché il nuovo dataset deve avere la stessa dimensione del dataset di partenza.
+
+        # CREAZIONE TRAINING E TEST
+        # TRAINING: con un dataset di dime campioni, occorrono dime estrazioni con reintroduzione
+        # per costruire il set di training. Non è detto che tutti i campioni vengano estratti,
+        # i campioni NON estratti dal set di partenza vanno a formare il set di TEST
+        # --------------------------------------------------------------------------------------------------------------
+
         print('\n ------------------------ Processing BOOTSTRAP iter #{} ------------------------'.format(idx + 1))
         # n_sample: numero di campioni da estrarre.
         # replace -> se True, estrazione con reintroduzione
@@ -314,12 +308,13 @@ class Run_net():
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val
 
     def kfold(self, idx, num_val_samples):
-        print('\n ------------------------ Processing KCROSSVAL fold #{} ------------------------'.format(idx + 1))
-        # ------------------------------------------- PAZIENTI --------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
         # Si effettua la divisione dei set di training, validation e test sui PAZIENTI e NON sulle singole slice: questo per
         # evitare che slice di uno stesso paziente siano sia nel set di training che nel set di test introducendo un bias
         # Preparazione set di validazione: selezione dei pazienti dalla partizione kesima
+        # --------------------------------------------------------------------------------------------------------------
 
+        print('\n ------------------------ Processing KCROSSVAL fold #{} ------------------------'.format(idx + 1))
         paziente_val = self.ID_paziente[idx * num_val_samples: (idx + 1) * num_val_samples]
         lab_paziente_val = self.label_paziente[idx * num_val_samples: (idx + 1) * num_val_samples]
         # Preparazione set di training: selezione dei pazienti da tutte le altre partizioni (k-1 partizioni)

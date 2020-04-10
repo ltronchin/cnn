@@ -37,11 +37,11 @@ class Slices():
         X_train = np.array(X_train)
         Y_train = np.array(Y_train)
         ID_paziente_slice_train = np.array(ID_paziente_slice_train)
-        Y_train_categ = to_categorical(Y_train, 2, dtype='uint8')
+        #Y_train_categ = to_categorical(Y_train, 2, dtype='uint8')
 
         self.count_label_train(Y_train)
 
-        return X_train, Y_train_categ, Y_train, ID_paziente_slice_train
+        return X_train, Y_train, ID_paziente_slice_train
 
     def shuffle_in_unison(self, X_train, Y_train, ID_paziente_slice_train):
             n_elem = X_train.shape[0]
@@ -68,11 +68,11 @@ class Slices():
         X_val = np.array(X_val)
         Y_val = np.array(Y_val)
         ID_paziente_slice_val = np.array(ID_paziente_slice_val)
-        Y_val_categ = to_categorical(Y_val, 2, dtype='uint8')
+        #Y_val_categ = to_categorical(Y_val, 2, dtype='uint8')
 
         self.count_label_val(Y_val)
 
-        return X_val, Y_val_categ, Y_val, ID_paziente_slice_val
+        return X_val, Y_val, ID_paziente_slice_val
 
     # -------------------- Creazione set di Test ----------------------
     def test(self):
@@ -91,11 +91,11 @@ class Slices():
         X_test = np.array(X_test)
         Y_test = np.array(Y_test)
         ID_paziente_slice_test = np.array(ID_paziente_slice_test)
-        Y_test_categ = to_categorical(Y_test, 2, dtype='uint8')
+        #Y_test_categ = to_categorical(Y_test, 2, dtype='uint8')
 
         self.count_label_test(Y_test)
 
-        return X_test, Y_test_categ, Y_test, ID_paziente_slice_test
+        return X_test, Y_test, ID_paziente_slice_test
 
     # ------------------ Verifica del bilanciamento del set di training  ------------------
     def count_label_train(self, Y_train):

@@ -51,8 +51,8 @@ class SaveScore():
         score.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history, False)
 
         print('\n ------------------ METRICHE SLICE E PAZIENTE ({}) ------------------'.format(best_on_val_set))
-        accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente, recall_paziente, \
-        f1_score_paziente, specificity_paziente, g_paziente = score.predictions()
+        accuracy, precision, recall, f1_score, specificity, g,\
+        accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente, specificity_paziente, g_paziente = score.predictions()
 
         self.accuracy_his.append(accuracy)
         self.precision_his.append(precision)

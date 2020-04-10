@@ -7,9 +7,9 @@ import math
 
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
+from tensorflow.keras.preprocessing.image import array_to_img
 
 from tensorflow import keras
-
 
 class MetricsCallback(keras.callbacks.Callback):
 
@@ -40,6 +40,7 @@ class MetricsCallback(keras.callbacks.Callback):
         batches = len(self.validation_data)
         #total = batches * self.batch_size
 
+        # Liste che contengono rispettivamente label predetta e verità per ogni batch
         Y_pred = []
         Y_true = []
         for batch in range(batches):
@@ -49,25 +50,15 @@ class MetricsCallback(keras.callbacks.Callback):
             # Un discorso analogo vale per le immagini di training
             X_val, Y_val = next(self.validation_data)
 
-            # Liste che contengono rispettivamente label predetta e verità per ogni batch
-            Y_pred_batch = []
-            Y_true_batch = []
-            # argmax restituisce l'indice del massimo valore lungo un asse
             predictions = self.model.predict(X_val)
-            for idx in range(predictions.shape[0]):
-                Y_pred_batch.append(np.argmax(predictions[idx]))
-                Y_true_batch.append(np.argmax(Y_val[idx]))
-
-            # Salvataggio dei risultati ottenuti per la corrente batch in una lista (lista in una lista)
-            Y_pred.append(Y_pred_batch)
-            Y_true.append(Y_true_batch)
+            Y_pred.append(predictions.round())
+            Y_true.append(Y_val)
 
         val_pred = np.asarray(list(itertools.chain.from_iterable(Y_pred)))
         val_true = np.asarray(list(itertools.chain.from_iterable(Y_true)))
-        #print("Callback %d" % (val_pred.shape))
 
         # Calcolo delle metriche
-        conf_mat = confusion_matrix(val_true, val_pred, labels=[0, 1])
+        conf_mat = confusion_matrix(val_true, val_pred)
         tn, fp, fn, tp = conf_mat.ravel()
         _val_accuracy = accuracy_score(val_true, val_pred)
         _val_specificity = tn / (tn + fp)
@@ -114,7 +105,7 @@ class MetricsCallback(keras.callbacks.Callback):
 
         plt.figure()
         plt.plot(epochs, self.val_g, 'k', label='Val mean of accuracy')
-        #plt.plot(epochs, self.val_f1s, 'y', label='Val f1-score')
+        plt.plot(epochs, self.val_f1s, 'y', label='Val f1-score')
         plt.xlabel('Epochs')
         plt.ylabel('Validation score')
         plt.legend()

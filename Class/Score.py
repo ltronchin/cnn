@@ -10,7 +10,17 @@ import math as math
 
 class Score():
 
-    def __init__(self, X_test, Y_test, ID_paziente_slice_test, idx, alexnet, run_folder, paziente_test, label_paziente_test, best_on_val_set):
+    def __init__(self,
+                 X_test,
+                 Y_test,
+                 ID_paziente_slice_test,
+                 idx,
+                 alexnet,
+                 run_folder,
+                 paziente_test,
+                 label_paziente_test,
+                 model_to_evaluate):
+
         self.X_test = X_test
         self.Y_test = Y_test
         self.idx = idx
@@ -19,10 +29,10 @@ class Score():
         self.paziente_test = paziente_test
         self.ID_paziente_slice_test = ID_paziente_slice_test
         self.label_paziente_test = label_paziente_test
-        self.best_on_val_set = best_on_val_set
+        self.model_to_evaluate = model_to_evaluate
 
     def metrics(self, Y_true, Y_pred, subject):
-        conf_mat = confusion_matrix(Y_true, Y_pred, labels=[0, 1])
+        conf_mat = confusion_matrix(Y_true, Y_pred)
         print("\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(conf_mat))
 
         # Calcolo:
@@ -50,7 +60,7 @@ class Score():
               "\nTotali veri negativi: {}"
               "\nTotali veri positivi: {}".format(tn, fp, tp, fn, neg_true, pos_true))
 
-        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
         file.write("\n-------------- FOLD: {} --------------".format(self.idx))
         file.write("\nScore {}:"
                    "\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(subject, conf_mat))
@@ -75,7 +85,7 @@ class Score():
             recall = tp / (tp + fn)
             if np.isnan(recall):
                 recall = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
                 file.write("\nRecall is nan")
                 file.close()
 
@@ -84,7 +94,7 @@ class Score():
             precision = tp / (tp + fp)
             if np.isnan(precision):
                 precision = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
                 file.write("\nPrecision is nan")
                 file.close()
 
@@ -93,7 +103,7 @@ class Score():
             f1_score = (2 * recall * precision) / (recall + precision)
             if np.isnan(f1_score):
                 f1_score = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
                 file.write("\nF1-score is nan")
                 file.close()
 
@@ -101,7 +111,7 @@ class Score():
             specificity = tn / (tn + fp)
             if np.isnan(specificity):
                 specificity = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
                 file.write("\nSpecificity is nan")
                 file.close()
 
@@ -109,7 +119,7 @@ class Score():
             # probabilità a priori)
             g = math.sqrt(recall * specificity)
         else:
-            print("Pazienti di una sola classe, gli score sulle singole classi vengono posti a 0")
+            print("Pazienti di una sola classe, gli score sulle singole Class vengono posti a 0")
             recall = 0
             precision = 0
             f1_score = 0
@@ -124,7 +134,7 @@ class Score():
               '\nMedia delle accuratezze: {}'.format(accuracy, precision, recall, specificity, f1_score, g))
 
         # 'a' apertura del file in scrittura
-        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.best_on_val_set)), "a")
+        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
         file.write("\nScore {}:"
                    "\nAccuratezza: {}"
                    "\nPrecisione: {}"
@@ -137,44 +147,44 @@ class Score():
         return accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true
 
     def predictions(self):
-        # ---------- Calcolo predizioni slice ------------
-        # L'output di model predict è una distribuzione di probabilità sulle 2 classi -> per ogni campione in input
-        # la rete fornisce in output un vettore bidimensionale
+
         predictions = self.alexnet.predict(self.X_test)
-        # predictions -> tensore 2D (N slice di TEST, Numero classi)
-        # print('Shape tensore predictions: {}'.format(predictions.shape))
-        # ogni riga in predictions è un tensore 1D di dimensionalità 2 (2 sole classi), la somma dei coefficienti in ogni
-        # tensore è pari a 1
-        # print("Somma delle probabilità per ogni slice di test: {}".format(np.sum(predictions[0])))
-        # print(true_label)
-        Y_pred = []
-        Y_true = self.Y_test[:, 0]  # verità
+        print('Shape tensore predictions: {}'.format(predictions.shape))
 
-        # l'indice del valore più grande nel tensore 1D è la classe predetta -- la classe con la più alta probabilità --
-        # la funzione argmax restituisce l'indice del massimo valore lungo un asse del tensore
-        for idx in range(predictions.shape[0]):
-            Y_pred.append(np.argmax(predictions[idx]))
+        Y_pred = predictions.round()
+        print(self.Y_test.shape)
 
-        Y_pred = np.array(Y_pred)
-
-        accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred, "Slice")
+        accuracy,\
+        precision,\
+        recall, \
+        f1_score, \
+        specificity,\
+        g, pos_true, \
+        neg_true = self.metrics(self.Y_test, Y_pred, "Slice")
 
         if pos_true != 0 and neg_true != 0:
-            auc = self.roc_curve(predictions[:,1], Y_true)
+            auc = self.roc_curve(predictions, self.Y_test)
             # Se l'area sotto la curva ROC è inferiore del 50% si ribaltano le etichette
             if auc < 0.5:
                 print("\n ---- Ribalto etichette ---- \n")
-                Y_pred = []
-                for idx in range(predictions.shape[0]):
-                    Y_pred.append(np.argmin(predictions[idx]))
-                Y_pred = np.array(Y_pred)
-                accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true = self.metrics(Y_true, Y_pred, "Slice")
-                auc = self.roc_curve(predictions[:,0], Y_true)
-        else:
-            auc = 0
+                predictions = 1 - predictions
 
-        accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
-        specificity_paziente, g_paziente = self.predictions_pazienti(Y_pred)
+                Y_pred = predictions.round()
+                accuracy,\
+                precision,\
+                recall, \
+                f1_score,\
+                specificity,\
+                g, pos_true,\
+                neg_true = self.metrics(self.Y_test, Y_pred, "Slice")
+                self.roc_curve(predictions, self.Y_test)
+
+        accuracy_paziente, \
+        precision_paziente, \
+        recall_paziente, \
+        f1_score_paziente,\
+        specificity_paziente,\
+        g_paziente = self.predictions_pazienti(Y_pred)
 
         return (accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente,
                 recall_paziente, f1_score_paziente, specificity_paziente, g_paziente)

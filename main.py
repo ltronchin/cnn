@@ -2,11 +2,11 @@ import os
 import datetime
 import numpy as np
 
-from classi.Alexnet import Alexnet
-from classi.Load import Load
-from classi.My_callbacks import My_callbacks
-from classi.Run_net import Run_net
-from classi.EvaluateConvNet import EvaluateConvNet
+from Models.Alexnet import Alexnet
+from Class.Load import Load
+from Callbacks.My_callbacks import My_callbacks
+from Class.Run_net import Run_net
+from Class.EvaluateConvNet import EvaluateConvNet
 
 # --------------------------- Aggiunta ambiente virtuale tensorflow i path di Graphviz e CUPTI ------------------------
 os.environ["PATH"] += os.pathsep + 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0/extras/CUPTI/libx64'
@@ -22,7 +22,7 @@ num_epochs = 250
 batch = 128
 l1 = 'none'
 l2 = 'none' #'True: 0.001'
-lr = 0.001
+lr = 0.0005 # 0.0001
 validation_method = 'kfold' #bootstrap
 # Parametri kfold
 k = 10
@@ -39,8 +39,7 @@ view = 'layer'
 lr_decay = False
 
 drop = [True, True, True, True, True, True, True]
-drop_list = [0.20, 0.20, 0.30, 0.30, 0.40, 0.40, 0.50]
-
+drop_list = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
 filter_list = [32, 32, 64, 64, 128, 128, 256]
 kernel_size = 3
 
@@ -151,7 +150,6 @@ for slice_path_ID in slice_path_list:
                       alexnet=alexnet,
                       my_callbacks=my_callbacks,
                       run_folder=run_folder,
-                      load=load,
                       lr_decay = lr_decay)
 
     run_net.run()

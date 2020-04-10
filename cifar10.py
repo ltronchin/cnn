@@ -1,11 +1,9 @@
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import numpy as np
-import sys
 import os
 
-from classi.Alexnet import Alexnet
+from Models.Alexnet import Alexnet
 import matplotlib.pyplot as plt
 run_folder = "C:/Users/GeNeSiS/PycharmProjects"
 

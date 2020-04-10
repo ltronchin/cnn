@@ -31,7 +31,7 @@ class Alexnet():
         # Convoluzione - attivazione - batch normalization - dropout
         model.add(layers.Conv2D(self.filter_list[0],
                                 (self.kernel_size, self.kernel_size),
-                                kernel_initializer = kernel_init,padding='same',
+                                kernel_initializer = kernel_init,
                                 #kernel_regularizer=regularizers.l2(0.001),
                                 input_shape = self.input_dim))
         model.add(self.get_activation(self.cnn_activation))
@@ -42,9 +42,8 @@ class Alexnet():
         # Convoluzione - attivazione - batch normalization - dropout
         model.add(layers.Conv2D(self.filter_list[1],
                                 (self.kernel_size, self.kernel_size),
-                                kernel_initializer = kernel_init,
-                                #kernel_regularizer=regularizers.l2(0.001),
-                                padding='same'))
+                                # kernel_regularizer=regularizers.l2(0.001),
+                                kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
@@ -56,9 +55,8 @@ class Alexnet():
         # Convoluzione - attivazione - batch normalization - dropout
         model.add(layers.Conv2D(self.filter_list[2],
                                 (self.kernel_size, self.kernel_size),
-                                kernel_initializer = kernel_init,
-                                #kernel_regularizer=regularizers.l2(0.001),
-                                padding='same'))
+                                # kernel_regularizer=regularizers.l2(0.001),
+                                kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
@@ -67,9 +65,8 @@ class Alexnet():
         # Convoluzione - attivazione - batch normalization - dropout
         model.add(layers.Conv2D(self.filter_list[3],
                                 (self.kernel_size, self.kernel_size),
-                                kernel_initializer = kernel_init,
-                                #kernel_regularizer=regularizers.l2(0.001),
-                                padding='same'))
+                                # kernel_regularizer=regularizers.l2(0.001),
+                                kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
@@ -81,9 +78,8 @@ class Alexnet():
         # Convoluzione - attivazione - batch normalization - dropout
         model.add(layers.Conv2D(self.filter_list[4],
                                 (self.kernel_size, self.kernel_size),
-                                kernel_initializer = kernel_init,
-                                #kernel_regularizer=regularizers.l2(0.001),
-                                padding='same'))
+                                # kernel_regularizer=regularizers.l2(0.001),
+                                kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
@@ -92,9 +88,8 @@ class Alexnet():
         # Convoluzione - attivazione - batch normalization - dropout
         model.add(layers.Conv2D(self.filter_list[5],
                                 (self.kernel_size, self.kernel_size),
-                                kernel_initializer = kernel_init,
-                                #kernel_regularizer=regularizers.l2(0.001),
-                                padding='same'))
+                                # kernel_regularizer=regularizers.l2(0.001),
+                                kernel_initializer = kernel_init))
         model.add(self.get_activation(self.cnn_activation))
         if self.batch_norm == True:
             model.add(layers.BatchNormalization())
@@ -115,7 +110,7 @@ class Alexnet():
         if self.drop[6] == True:
             model.add(layers.Dropout(self.drop_list[6]))
 
-        model.add(layers.Dense(2, kernel_initializer = kernel_init, activation='softmax'))
+        model.add(layers.Dense(1, kernel_initializer = kernel_init, activation='sigmoid'))
 
         opt = self.get_opti(self.lr)
 
