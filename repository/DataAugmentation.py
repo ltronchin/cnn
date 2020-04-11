@@ -80,7 +80,7 @@ class DataAugmentation():
             label_aug_total.append(label)
             ID_aug_total.append(idd)
 
-            # Ad slice 2D è stato effettuato il crop sulla lezione per poi effettuare un resize alla dimensione della
+            # Ad slice 2D è stato effettuato il crop sulla lesione per poi effettuare un resize alla dimensione della
             # slice 2D di partenza. A slice_crop si applica uno zoom out del 60% e poi delle traslazioni randomiche.
             # Questo tipo di precedimento serve per centrare la lesione al centro dell'immagine impedendo così che
             # applicando le traslazioni la lesione "esca" dal campo visivo
@@ -156,7 +156,9 @@ class DataAugmentation():
 
         #self.write_excel(Y_aug, idd_aug, n_patient)
 
-        return X_aug, Y_aug, idd_aug
+        Y_aug_categ = to_categorical(Y_aug, 2, dtype='uint8')
+
+        return X_aug, Y_aug_categ, idd_aug
 
     def rotate_slice(self, img, datagen):
         # theta: angolo (in senso antiorario), campionato in modo randomico da una distribuzione uniforme con

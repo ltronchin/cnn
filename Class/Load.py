@@ -1,10 +1,10 @@
-import scipy.io as sio # libreria per importare i dati da Matlab
+import scipy.io as sio  # libreria per importare i dati da Matlab
 import numpy as np
 import copy
-from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
+from tensorflow.keras.preprocessing.image import img_to_array
+
 
 class Load():
-
     def __init__(self, path_pazienti):
         self.path_pazienti = path_pazienti
 
@@ -23,8 +23,8 @@ class Load():
         # shape -> descrive quante DIMENSIONI il tensore ha lungo ogni ASSE
         # ndim -> conta quanti ASSI ha il tensore. Scalare -> tensore 0D, vettore -> tensore 1D, matrice -> tensore 2D
 
-        info = pazienti['pazienti_new'] # salvataggio della struct pazienti in info
-        data = load['slices_resize_' + view][0] # salvataggio della struct slices in data
+        info = pazienti['pazienti_new']  # salvataggio della struct pazienti in info
+        data = load['slices_padding_' + view][0]  # salvataggio della struct slices in data
 
         self.data = data
         self.info = info
@@ -55,7 +55,7 @@ class Load():
         labels = []
         ID_paziente_slice = []
         for idx in range(self.data.shape[0]):
-            slices.append(img_to_array(self.data[idx][0]))  # immagini
+            slices.append(img_to_array(self.data[idx][0], dtype='double'))  # immagini
             ID_paziente_slice.append(self.data[idx][1])  # ID_paziente
             labels.append(self.data[idx][2][0])  # delle labels
 
@@ -65,6 +65,7 @@ class Load():
         ID_paziente_slice = np.array(ID_paziente_slice)
 
         print("[INFO]-- Numero e dimensione slice {}".format(slices.shape))
+        print(type(slices[1][0][0][0]))
 
         return slices, labels, ID_paziente_slice
 
@@ -72,7 +73,7 @@ class Load():
     # ogni volta che viene eseguito il codice. Questo permette di validare i risultati quando il codice è eseguito
     # più volte.
     def shuffle_in_unison(self, ID_paziente_shuffle, lab_paziente_shuffle):
-            n_elem = ID_paziente_shuffle.shape[0]
-            np.random.seed(42)
-            indeces = np.random.choice(n_elem, size = n_elem, replace = False)
-            return ID_paziente_shuffle[indeces], lab_paziente_shuffle[indeces]
+        n_elem = ID_paziente_shuffle.shape[0]
+        np.random.seed(42)
+        indeces = np.random.choice(n_elem, size=n_elem, replace=False)
+        return ID_paziente_shuffle[indeces], lab_paziente_shuffle[indeces]

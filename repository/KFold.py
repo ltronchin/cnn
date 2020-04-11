@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img, img_to_array
 
-from classi.Slices import Slices
-from classi.Score import Score
+from Class.Slices import Slices
+from Class.Score import Score
 
 class KFold():
 
