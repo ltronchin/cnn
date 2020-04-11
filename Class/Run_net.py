@@ -9,7 +9,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
 
 from Class.Slices import Slices
-from Class.SaveScore import SaveScore
 from Class.Score import Score
 from Callbacks.MetricsCallback import MetricsCallback
 from Callbacks.LearningRateMonitorCallback import LearningRateMonitorCallback
@@ -56,7 +55,9 @@ class Run_net():
         self.my_callbacks = my_callbacks
         self.run_folder = run_folder
 
-        self.save_score = SaveScore(run_folder=self.run_folder,num_epochs=self.num_epochs)
+        self.score = Score(run_folder=self.run_folder,
+                           model_to_evaluate='end_of_training',
+                           num_epochs=self.num_epochs)
 
         # (epoch to start, learning rate) tuples
         self.LR_SCHEDULE = [(10, 0.0001), (60, 0.00001), (10, 0.000001)]
@@ -185,21 +186,19 @@ class Run_net():
             # Salvataggio del modello alla fine del training
             model.save(os.path.join(self.run_folder, "model/model_end_of_train_{}.h5".format(self.idx)), include_optimizer=False)
 
-            self.score = Score(X_test=X_val,
-                          Y_test=Y_val,
-                          ID_paziente_slice_test=ID_paziente_slice_val,
-                          idx=self.idx,
-                          alexnet=model,
-                          run_folder=self.run_folder,
-                          paziente_test=paziente_val,
-                          label_paziente_test=lab_paziente_val,
-                          model_to_evaluate = 'end_of_training')
-
             # ---------------------------------------- SCORE ----------------------------------------------
-            self.save_score.save_single_score(self.score, history, best_on_val_set = 'end_of_training')
+            self.score.predictions(alexnet=model,
+                                   X_test=X_val,
+                                   Y_test=Y_val,
+                                   ID_paziente_slice_test=ID_paziente_slice_val,
+                                   paziente_test=paziente_val,
+                                   label_paziente_test=lab_paziente_val,
+                                   idx = self.idx)
+
+            self.score.save_single_score(history)
 
         # ---------------------------------------- SCORE MEDIATO SULLE VARIE FOLD ----------------------------------------------
-        self.save_score.save_mean_score(score = self.score, best_on_val_set = 'end_of_training', idx = self.idx)
+        self.score.save_mean_score(iter)
 
     # Codice per eliminare duplicati da una lista
     def remove(self, duplicate_list):

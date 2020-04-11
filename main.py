@@ -20,9 +20,10 @@ fill_mode = 'constant'
 load = False
 num_epochs = 250
 batch = 128
-l1 = 'none'
-l2 = 'none' #'True: 0.001'
-lr = 0.0005 # 0.0001
+regularizer = None #l2 #l1 #l2_l1
+l1 = None #0.001
+l2 = None #0.001
+lr = 0.001 # 0.0001 # 0.0005
 validation_method = 'kfold' #bootstrap
 # Parametri kfold
 k = 10
@@ -39,12 +40,13 @@ view = 'layer'
 lr_decay = False
 
 drop = [True, True, True, True, True, True, True]
-drop_list = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+drop_list = [0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5]
 filter_list = [32, 32, 64, 64, 128, 128, 256]
+padding = 'valid' #same
 kernel_size = 3
 
-slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
-#slice_path_list = ["ID5"]
+#slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
+slice_path_list = ["ID1"]
 
 for slice_path_ID in slice_path_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -70,12 +72,12 @@ for slice_path_ID in slice_path_list:
     file.write("Model: Alexnet\n")
     file.write("Validation method: {}\n".format(validation_method))
     file.write("Layer: {} \n".format(filter_list))
+    file.write("Padding: {} \n".format(padding))
     file.write("Kernel_size: {}\n".format(kernel_size))
-    file.write("L1_L2_regularization: {}, {}\n".format(l1, l2))
+    file.write("Regularization: {} \n".format(regularizer))
     file.write("Activation: {}\n".format(activation))
     file.write("Optimiser: {}\n".format(optimiser))
     file.write("Initializer: {}\n".format(initializer))
-    file.write("Dropout: {}\n".format(drop))
     file.write("Dropout_value: {}\n".format(drop_list))
     file.write("Batch normalization: {}\n".format(batch_norm))
     file.write("Learning rate: {}\n".format(lr))
@@ -129,7 +131,9 @@ for slice_path_ID in slice_path_list:
                       drop = drop,
                       drop_list = drop_list,
                       filter_list = filter_list,
-                      kernel_size = kernel_size)
+                      kernel_size = kernel_size,
+                      padding = padding,
+                      regularizer = regularizer)
 
     my_callbacks = My_callbacks(run_folder)
 

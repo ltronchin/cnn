@@ -1,6 +1,7 @@
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,27 +12,39 @@ import math as math
 class Score():
 
     def __init__(self,
-                 X_test,
-                 Y_test,
-                 ID_paziente_slice_test,
-                 idx,
-                 alexnet,
                  run_folder,
-                 paziente_test,
-                 label_paziente_test,
-                 model_to_evaluate):
+                 model_to_evaluate,
+                 num_epochs):
 
-        self.X_test = X_test
-        self.Y_test = Y_test
-        self.idx = idx
-        self.alexnet = alexnet
+        self.predictions_slice_iterator = []
+        self.true_slice_iterator = []
+        self.pred_paziente_iterator = []
+        self.true_paziente_iterator = []
+
         self.run_folder = run_folder
-        self.paziente_test = paziente_test
-        self.ID_paziente_slice_test = ID_paziente_slice_test
-        self.label_paziente_test = label_paziente_test
         self.model_to_evaluate = model_to_evaluate
+        self.num_epochs = num_epochs
 
-    def metrics(self, Y_true, Y_pred, subject):
+        self.all_acc_history = []
+        self.all_loss_history = []
+        self.all_val_acc_history = []
+        self.all_val_loss_history = []
+
+        self.accuracy_his = []
+        self.precision_his = []
+        self.recall_his = []
+        self.f1_score_his = []
+        self.specificity_his = []
+        self.g_his = []
+
+        self.accuracy_paziente_his = []
+        self.precision_paziente_his = []
+        self.recall_paziente_his = []
+        self.f1_score_paziente_his = []
+        self.specificity_paziente_his = []
+        self.g_paziente_his = []
+
+    def metrics(self, Y_true, Y_pred, metrics_slice_paziente):
         conf_mat = confusion_matrix(Y_true, Y_pred)
         print("\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(conf_mat))
 
@@ -61,9 +74,8 @@ class Score():
               "\nTotali veri positivi: {}".format(tn, fp, tp, fn, neg_true, pos_true))
 
         file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
-        file.write("\n-------------- FOLD: {} --------------".format(self.idx))
-        file.write("\nScore {}:"
-                   "\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(subject, conf_mat))
+        file.write("\nSCORE {}:"
+                   "\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(metrics_slice_paziente, conf_mat))
         file.write("\nTrue negative: {}"
                    "\nFalse positive: {}"
                    "\nTrue positive: {}"
@@ -74,120 +86,95 @@ class Score():
 
         # accuracy: tp + tn / positivi veri + negativi veri -> quantifica il numero di volte che il classificatore ha
         # dato un risposta corretta (non consente di capire la distribuzione dei tp e tn)
-        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        accuracy = accuracy_score(Y_true, Y_pred)
 
-        # Se nel set di test ci sono SOLO pazienti positivi (PFS maggiore uguale 11) o SOLO paziente negativi (PFS minore uguale 11 mesi)
-        # non ha senso calcolare gli score per singola classe, per questo vengono messi a nan
-        if pos_true != 0 and neg_true != 0:
-            # sensibilità/recall/true positive rate -> misura la frazione di positivi correttamente riconosciuta, risponde alla domanda:
-            # "di tutti i campioni VERAMENTE positivi quale percentuale è stata classificata correttamente?" e si calcola
-            # come il rapporto tra i positivi correttamente predetti e tutti i veri positivi
-            recall = tp / (tp + fn)
-            if np.isnan(recall):
-                recall = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
-                file.write("\nRecall is nan")
-                file.close()
+        # sensibilità/recall/true positive rate (tp / (tp + fn)) -> misura la frazione di positivi correttamente riconosciuta, risponde alla domanda:
+        # "di tutti i campioni VERAMENTE positivi quale percentuale è stata classificata correttamente?" e si calcola
+        # come il rapporto tra i positivi correttamente predetti e tutti i veri positivi
+        recall = recall_score(Y_true, Y_pred)
 
-            # precision: tp / tp + fp -> quantifica quanti dei positivi predetti sono effettivamente positivi, risponde alla domanda
-            # "di tutti i campioni PREDETTI positivi quali erano veramente positivi?"
-            precision = tp / (tp + fp)
-            if np.isnan(precision):
-                precision = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
-                file.write("\nPrecision is nan")
-                file.close()
+        # precision (tp / tp + fp) -> quantifica quanti dei positivi predetti sono effettivamente positivi, risponde alla domanda
+        # "di tutti i campioni PREDETTI positivi quali erano veramente positivi?"
+        precision = precision_score(Y_true, Y_pred)
 
-            # f1_score è una media ponderata delle metriche Precision e Recall - se anche solo una tra precisione e recall è
-            # bassa, l'f1-score sarà basso -
-            f1_score = (2 * recall * precision) / (recall + precision)
-            if np.isnan(f1_score):
-                f1_score = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
-                file.write("\nF1-score is nan")
-                file.close()
+        # f1_score ((2 * recall * precision) / (recall + precision)) è una media ponderata delle metriche Precision e Recall - se anche solo una tra precisione e recall è
+        # bassa, l'f1-score sarà basso -
+        f1 = f1_score(Y_true, Y_pred)
 
-            # specificità/true negative rate -> misura la frazione di negativi correttamente riconosciuta
-            specificity = tn / (tn + fp)
-            if np.isnan(specificity):
-                specificity = 0
-                file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
-                file.write("\nSpecificity is nan")
-                file.close()
+        # specificità/true negative rate -> misura la frazione di negativi correttamente riconosciuta
+        specificity = tn / (tn + fp)
 
-            # Media geometrica delle accuratezze: radice quadrata delle recall calcolate per classe (non dipende dalla
-            # probabilità a priori)
-            g = math.sqrt(recall * specificity)
-        else:
-            print("Pazienti di una sola classe, gli score sulle singole Class vengono posti a 0")
-            recall = 0
-            precision = 0
-            f1_score = 0
-            specificity = 0
-            g = 0
+        # Media geometrica delle accuratezze: radice quadrata delle recall calcolate per classe (non dipende dalla
+        # probabilità a priori)
+        g = math.sqrt(recall * specificity)
 
         print('\nAccuratezza: {}'
               '\nPrecisione: {}'
               '\nRecall: {}'
               '\nSpecificità: {}'
               '\nF1-score: {}'
-              '\nMedia delle accuratezze: {}'.format(accuracy, precision, recall, specificity, f1_score, g))
+              '\nMedia delle accuratezze: {}'.format(accuracy, precision, recall, specificity, f1, g))
 
         # 'a' apertura del file in scrittura
         file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
-        file.write("\nScore {}:"
-                   "\nAccuratezza: {}"
+        file.write("\nAccuratezza: {}"
                    "\nPrecisione: {}"
                    "\nRecall: {}"
                    "\nF1_score: {}"
                    "\nSpecificità: {}"
-                   "\nMedia delle accuratezze: {}".format(subject, accuracy, precision, recall, f1_score, specificity, g))
+                   "\nMedia delle accuratezze: {}\n".format(accuracy, precision, recall, f1, specificity, g))
         file.close()
 
-        return accuracy, precision, recall, f1_score, specificity, g, pos_true, neg_true
+        if metrics_slice_paziente == 'slice':
+            self.accuracy_his.append(accuracy)
+            self.precision_his.append(precision)
+            self.recall_his.append(recall)
+            self.f1_score_his.append(f1)
+            self.specificity_his.append(specificity)
+            self.g_his.append(g)
+        elif metrics_slice_paziente == 'paziente':
+            self.accuracy_paziente_his.append(accuracy)
+            self.precision_paziente_his.append(precision)
+            self.recall_paziente_his.append(recall)
+            self.f1_score_paziente_his.append(f1)
+            self.specificity_paziente_his.append(specificity)
+            self.g_paziente_his.append(g)
 
-    def predictions(self):
+    def predictions(self, alexnet, X_test, Y_test, ID_paziente_slice_test, paziente_test, label_paziente_test, idx):
+
+        self.alexnet = alexnet
+        self.X_test = X_test
+        self.Y_test = Y_test
+        self.ID_paziente_slice_test = ID_paziente_slice_test
+
+        self.paziente_test = paziente_test
+        self.label_paziente_test = label_paziente_test
+        self.idx = idx
+
+        print('\n ------------------ METRICHE SLICE E PAZIENTE ({}) ------------------'.format(self.model_to_evaluate))
+        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
+        file.write("\n-------------- FOLD: {} --------------".format(self.idx))
+        file.close()
 
         predictions = self.alexnet.predict(self.X_test)
-        print('Shape tensore predictions: {}'.format(predictions.shape))
+
+        self.predictions_slice_iterator.append(predictions)
+        self.true_slice_iterator.append(self.Y_test)
 
         Y_pred = predictions.round()
-        print(self.Y_test.shape)
 
-        accuracy,\
-        precision,\
-        recall, \
-        f1_score, \
-        specificity,\
-        g, pos_true, \
-        neg_true = self.metrics(self.Y_test, Y_pred, "Slice")
+        auc = self.roc_curve(predictions, self.Y_test)
+        # Se l'area sotto la curva ROC è inferiore del 50% si ribaltano le etichette
+        if auc < 0.5:
+            print("---- Ribalto etichette ----")
+            predictions = 1 - predictions
+            Y_pred = predictions.round()
+            self.roc_curve(predictions, self.Y_test)
+            self.metrics(self.Y_test, Y_pred, "slice")
+        else:
+            self.metrics(self.Y_test, Y_pred, "slice")
 
-        if pos_true != 0 and neg_true != 0:
-            auc = self.roc_curve(predictions, self.Y_test)
-            # Se l'area sotto la curva ROC è inferiore del 50% si ribaltano le etichette
-            if auc < 0.5:
-                print("\n ---- Ribalto etichette ---- \n")
-                predictions = 1 - predictions
-
-                Y_pred = predictions.round()
-                accuracy,\
-                precision,\
-                recall, \
-                f1_score,\
-                specificity,\
-                g, pos_true,\
-                neg_true = self.metrics(self.Y_test, Y_pred, "Slice")
-                self.roc_curve(predictions, self.Y_test)
-
-        accuracy_paziente, \
-        precision_paziente, \
-        recall_paziente, \
-        f1_score_paziente,\
-        specificity_paziente,\
-        g_paziente = self.predictions_pazienti(Y_pred)
-
-        return (accuracy, precision, recall, f1_score, specificity, g, accuracy_paziente, precision_paziente,
-                recall_paziente, f1_score_paziente, specificity_paziente, g_paziente)
+        self.predictions_pazienti(Y_pred)
 
     def predictions_pazienti(self, Y_pred):
         # ----------- Metriche su pazienti ------------
@@ -221,10 +208,11 @@ class Score():
             # print('\n---------------------------------------------------\n')
 
         pred_paziente_test = np.array(pred_paziente_test_list)
-        accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente,\
-        specificity_paziente, g_paziente, pos_true_paziente, neg_true_paziente  = self.metrics(self.label_paziente_test, pred_paziente_test, "Paziente")
 
-        return accuracy_paziente, precision_paziente, recall_paziente, f1_score_paziente, specificity_paziente, g_paziente
+        self.pred_paziente_iterator.append(pred_paziente_test)
+        self.true_paziente_iterator.append(self.label_paziente_test)
+
+        self.metrics(self.label_paziente_test, pred_paziente_test, "paziente")
 
     def roc_curve(self, predictions, Y_true):
         x = np.linspace(0, 1, 10)
@@ -240,7 +228,6 @@ class Score():
         plt.ylabel('True Positive Rate')
         plt.grid(True)
         plt.savefig(os.path.join(self.run_folder, "plot/roc_curve{}.png".format(self.idx)), dpi=1200, format='png')
-
         plt.show()
         return auc
 
@@ -275,5 +262,93 @@ class Score():
         plt.show()
         plt.close()
 
+    def save_single_score(self, history):
 
+        # Plot di accuratezza e loss per la singola fold
+        # Oggetto history -> l'oggetto ha come membro "history", che è un dizionario contenente lo storico di ciò
+        # che è successo durante il training
+        # Valori di accuratezza e di loss per ogni epoca
+        acc_history = history.history['accuracy']
+        val_acc_history = history.history['val_accuracy']
+
+        loss_history = history.history['loss']
+        val_loss_history = history.history['val_loss']
+
+        self.plot_loss_accuracy(loss_history, val_loss_history, acc_history, val_acc_history, False)
+
+        # Creazione liste dei valori di accuratezza e loss per ogni fold
+        self.all_acc_history.append(acc_history)
+        self.all_loss_history.append(loss_history)
+        self.all_val_acc_history.append(val_acc_history)
+        self.all_val_loss_history.append(val_loss_history)
+
+    def save_mean_score(self, n):
+        # ----------------------------------------------- SCORE  MEDIE -------------------------------------------------
+        print('\n---------------  Media valori loss e accuratezza sulle varie fold ({}) ----------'.format(self.model_to_evaluate))
+
+        average_acc_history = [np.mean([x[i] for x in self.all_acc_history]) for i in range(self.num_epochs)]
+        average_loss_history = [np.mean([x[i] for x in self.all_loss_history]) for i in range(self.num_epochs)]
+        average_val_acc_history = [np.mean([x[i] for x in self.all_val_acc_history]) for i in range(self.num_epochs)]
+        average_val_loss_history = [np.mean([x[i] for x in self.all_val_loss_history]) for i in range(self.num_epochs)]
+
+        self.plot_loss_accuracy(average_loss_history, average_val_loss_history,  average_acc_history, average_val_acc_history, mean = True)
+
+        # ------------------------ SLICE -------------------------
+        accuracy_average = np.mean([x for x in self.accuracy_his])
+        precision_average = np.mean([x for x in self.precision_his])
+        recall_average = np.mean([x for x in self.recall_his])
+        f1_score_average = np.mean([x for x in self.f1_score_his])
+        specificity_average = np.mean([x for x in self.specificity_his])
+        g_average = np.mean([x for x in self.g_his])
+
+        print('\n ------------------ METRICHE MEDIE SLICE ------------------')
+        print('\nAccuratezza: {}'
+              '\nPrecisione: {}'
+              '\nRecall: {}'
+              '\nSpecificità: {}'
+              '\nF1-score: {}'
+              '\nMedia delle accuratezze: {}'.format(accuracy_average, precision_average, recall_average, specificity_average,
+                                                     f1_score_average, g_average))
+        # --------------------- PAZIENTI ------------------------
+        accuracy_paziente_average = np.mean([x for x in self.accuracy_paziente_his])
+        precision_paziente_average = np.mean([x for x in self.precision_paziente_his])
+        recall_paziente_average = np.mean([x for x in self.recall_paziente_his])
+        f1_score_paziente_average = np.mean([x for x in self.f1_score_paziente_his])
+        specificity_paziente_average = np.mean([x for x in self.specificity_paziente_his])
+        g_paziente_average = np.mean([x for x in self.g_paziente_his])
+
+        print('\n ------------------ METRICHE MEDIE PAZIENTI ------------------')
+        print('\nAccuratezza: {}'
+              '\nPrecisione: {}'
+              '\nRecall: {}'
+              '\nSpecificità: {}'
+              '\nF1-score: {}'
+              '\nMedia delle accuratezze: {}'.format(accuracy_paziente_average, precision_paziente_average,
+                                                     recall_paziente_average,
+                                                     specificity_paziente_average, f1_score_paziente_average,
+                                                     g_paziente_average))
+
+        # Scrittura su file
+        file = open(os.path.join(self.run_folder, "score_{}.txt".format(self.model_to_evaluate)), "a")
+        file.write("\nMEDIA SCORE SULLE {} FOLD\n".format(n))
+        file.write("\nScore slice:\nAccuratezza: {}"
+                   "\nPrecisione: {}"
+                   "\nRecall: {}"
+                   "\nF1_score: {}"
+                   "\nSpecificità: {}"
+                   "\nMedia delle accuratezze: {}\n".format(accuracy_average, precision_average, recall_average,
+                                                            f1_score_average, specificity_average, g_average))
+        file.write("\nScore paziente:"
+                   "\nAccuratezza_paz: {}"
+                   "\nPrecisione_paz: {}"
+                   "\nRecall_paz: {}"
+                   "\nF1_score_paz:{}"
+                   "\nSpecificità_paz: {}"
+                   "\nMedia delle accuratezze_paz: {}\n".format(accuracy_paziente_average, precision_paziente_average,
+                                                                recall_paziente_average, f1_score_paziente_average,
+                                                                specificity_paziente_average, g_paziente_average))
+        file.close()
+
+        self.metrics(np.concatenate(self.true_slice_iterator), np.concatenate(self.predictions_slice_iterator).round(),'all_predictions slice')
+        self.metrics(np.concatenate(self.true_paziente_iterator), np.concatenate(self.pred_paziente_iterator),'all_predictions paziente')
 
