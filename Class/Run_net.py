@@ -165,7 +165,7 @@ class Run_net():
             # ---------------------------------------------- MODELLO ---------------------------------------------------
             # Costruzione di un nuovo modello
             model = self.alexnet.build_alexnet()
-
+            self.alexnet.plot_model(self.run_folder, model)
             lr_monitor = LearningRateMonitorCallback(self.run_folder, self.idx)
             metrics= MetricsCallback(validation_generator, self.batch, self.run_folder, self.idx)
             lr_scheduling = LearningRateScheduler(self.lr_schedule)
