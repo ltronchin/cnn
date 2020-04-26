@@ -140,7 +140,7 @@ class Run_net():
                 train_datagen = ImageDataGenerator(rotation_range = 175,
                                                    width_shift_range = (-7, +7),
                                                    height_shift_range = (-7, +7),
-                                                   #shear_range = 20 ,
+                                                   shear_range = 20,
                                                    horizontal_flip = 'true',
                                                    vertical_flip='true',
                                                    fill_mode = self.fill_mode,
