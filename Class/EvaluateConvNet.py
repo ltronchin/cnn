@@ -10,8 +10,9 @@ import math as math
 
 class EvaluateConvNet():
 
-    def __init__(self, run_folder):
+    def __init__(self, run_folder, id):
         self.run_folder = run_folder
+        self.id = id
 
         self.predictions_slice_iterator = []
         self.true_slice_iterator = []
@@ -78,6 +79,10 @@ class EvaluateConvNet():
 
             Y_pred = predictions.round()
 
+            file = open(os.path.join(self.run_folder, "score_best_on_val_set.txt"), "a")
+            file.write("\n-------------- FOLD: {} --------------".format(idx))
+            file.close()
+
             self.metrics(Y_test, Y_pred, idx, 'slice')
 
             self.predictions_pazienti(Y_pred, paziente_test, ID_paziente_slice_test, lab_paziente_test, idx)
@@ -100,7 +105,7 @@ class EvaluateConvNet():
         g_paziente_average = np.nanmean([x for x in self.g_paziente_his])
 
         # Scrittura su file
-        file = open(os.path.join(self.run_folder, "score_best_on_val_set.txt"), "a")
+        file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
         file.write("\nMEDIA SCORE SULLE {} FOLD\n".format(k))
         file.write("\nScore slice:\nAccuratezza: {}"
                    "\nPrecisione: {}"
@@ -156,10 +161,9 @@ class EvaluateConvNet():
         neg_true = tn + fp
         pos_true = tp + fn
 
-        file = open(os.path.join(self.run_folder, "score_best_on_val_set.txt"), "a")
-        file.write("\n-------------- FOLD: {} --------------".format(idx))
-        file.write("\nScore:"
-                   "\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(conf_mat))
+        file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
+        file.write("\nSCORE {}:"
+                   "\nMatrice di confusione (colonne -> classe predetta, righe-> verità)\n{}".format(metrics_slice_paziente, conf_mat))
         file.write("\nTrue negative: {}"
                    "\nFalse positive: {}"
                    "\nTrue positive: {}"
@@ -175,9 +179,8 @@ class EvaluateConvNet():
         specificity = tn / (tn + fp)
         g = math.sqrt(recall * specificity)
 
-        file = open(os.path.join(self.run_folder, "score_best_on_val_set.txt"), "a")
-        file.write("\nScore:"
-                   "\nAccuratezza: {}"
+        file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
+        file.write("\nAccuratezza: {}"
                    "\nPrecisione: {}"
                    "\nRecall: {}"
                    "\nF1_score: {}"

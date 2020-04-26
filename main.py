@@ -14,11 +14,12 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
-augmented = 0
+augmented = 1
+augmentation = ['+shear']
 #fill_mode_list = ['constant', 'reflect', 'nearest']
 fill_mode = 'constant'
 load = False
-num_epochs = 250
+num_epochs = 500
 batch = 128
 regularizer = None #l2 #l1 #l2_l1
 l1 = None #0.001
@@ -45,8 +46,7 @@ filter_list = [32, 32, 64, 64, 128, 128, 256]
 padding = 'valid' #same
 kernel_size = 3
 
-#slice_path_list = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
-slice_path_list = ["ID1"]
+slice_path_list = ["ID8"]
 
 for slice_path_ID in slice_path_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
@@ -88,7 +88,7 @@ for slice_path_ID in slice_path_list:
         file.write("Campioni di test estratti ad ogni iterazione: {}\n".format(n_patient_test))
     else:
         file.write("Numero Fold: {}\n".format(k))
-    file.write("Data Augmentation: {}\n".format(augmented))
+    file.write("Data Augmentation: {}, trasformazioni: {}\n".format(augmented, augmentation))
     file.write("Fill mode: {}\n".format(fill_mode))
     file.write("Data e ora di inizio simulazione: " + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     file.close()
@@ -164,7 +164,8 @@ for slice_path_ID in slice_path_list:
     else:
         n_iter = boot_iter
 
-    evalConv = EvaluateConvNet(run_folder=run_folder)
+    evalConv = EvaluateConvNet(run_folder=run_folder,
+                               id = slice_path_ID)
     evalConv.use_best_model_on_val_set(n_iter)
 
     file = open(os.path.join(run_folder, "Parameters.txt"), "a")
