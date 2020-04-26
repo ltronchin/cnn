@@ -95,26 +95,29 @@ for slice_path_ID in slice_path_list:
 
     # ------------------------------------------ Caricamento dati -----------------------------------------------
     # Creazione istanza della classe Load
-    load = Load(path_pazienti = "D:/Download/data/pazienti_new.mat")
+    load = Load(path_pazienti = "C:/Users/User/Desktop/Tesi/Matlab/data/pazienti_new.mat")
     if allview == True:
         view = 'layer'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
+        load.read_from_path("C:/Users/User/Desktop/Tesi/Matlab/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices_layer, labels_layer, ID_paziente_slice_layer = load.slices()
 
         view = 'row'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
+        load.read_from_path("C:/Users/User/Desktop/Tesi/Matlab/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         slices_row, labels_row, ID_paziente_slice_row = load.slices()
 
         view = 'column'
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
+        load.read_from_path("C:/Users/User/Desktop/Tesi/Matlab/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         slices_column, labels_column, ID_paziente_slice_column = load.slices()
 
         slices = np.concatenate((slices_layer, slices_row, slices_column), axis = 0)
         labels = np.concatenate((labels_layer, labels_row, labels_column), axis = 0)
         ID_paziente_slice = np.concatenate((ID_paziente_slice_layer, ID_paziente_slice_row, ID_paziente_slice_column), axis = 0)
     else:
-        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
+
+
+
+        load.read_from_path("C:/Users/User/Desktop/Tesi/Matlab/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices, labels, ID_paziente_slice = load.slices()
 
@@ -134,6 +137,7 @@ for slice_path_ID in slice_path_list:
                       kernel_size = kernel_size,
                       padding = padding,
                       regularizer = regularizer)
+
 
     my_callbacks = My_callbacks(run_folder)
 
