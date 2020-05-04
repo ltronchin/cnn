@@ -4,12 +4,16 @@ import numpy as np
 import xlsxwriter
 import os
 import math
+from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage.filters import gaussian_filter
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import array_to_img
 
-from Class.Slices import Slices
-from Class.Score import Score
+from Utils.Slices import Slices
+from Utils.Score import Score
+from Class.GenerateSyntheticLesion import GenerateSyntheticLesion
+
 from Callbacks.MetricsCallback import MetricsCallback
 from Callbacks.LearningRateMonitorCallback import LearningRateMonitorCallback
 from Callbacks.LearningRateScheduler import LearningRateScheduler
@@ -29,11 +33,17 @@ class Run_net():
                  k_iter,
                  n_patient_test,
                  augmented,
+                 elastic_deformation,
                  fill_mode,
                  alexnet,
                  my_callbacks,
                  run_folder,
-                 lr_decay):
+                 lr_decay,
+                 WGAN_lesion,
+                 path_generator_adaptive,
+                 path_generator_not_adaptive,
+                 n_of_lesion2add,
+                 balance_training_data):
 
         self.validation_method = validation_method
         self.ID_paziente = ID_paziente
@@ -63,6 +73,27 @@ class Run_net():
         self.LR_SCHEDULE = [(10, 0.0001), (60, 0.00001), (10, 0.000001)]
         self.lr_decay = lr_decay
 
+        if self.validation_method[0] == 'bootstrap':
+            # Creazione di una lista di indici quanti sono il numero di pazienti
+            self.index = []
+            for i in range(self.ID_paziente.shape[0]):
+                self.index.append(i)
+            # boot_iter contiene il numero di iterazioni da effettuare per il metodo bootstrap
+            self.iter = self.boot_iter
+        else:
+            # Calcolo del numero di campioni per il set di validazione
+            self.num_val_samples = len(self.ID_paziente) // self.k_iter  # // si usa per approssimare al più piccolo
+            self.iter = self.k_iter
+
+        self.WGAN_lesion = WGAN_lesion
+        self.path_generator_adaptive = path_generator_adaptive
+        self.path_generator_not_adaptive = path_generator_not_adaptive
+
+        self.n_synthetic_slice = n_of_lesion2add
+        self.balance_class = balance_training_data
+
+        self.elastic_deformation = elastic_deformation
+
     def lr_schedule(self, epoch, lr):
         if epoch < self.LR_SCHEDULE[0][0] or epoch > self.LR_SCHEDULE[-1][0]:
             return lr
@@ -72,28 +103,15 @@ class Run_net():
         return lr
 
     def run(self):
-        if self.validation_method[0] == 'bootstrap':
-            # Creazione di una lista di indici quanti sono il numero di pazienti
-            index = []
-            for i in range(self.ID_paziente.shape[0]):
-                index.append(i)
-            # boot_iter contiene il numero di iterazioni da effettuare per il metodo bootstrap
-            iter = self.boot_iter
-        else:
-            # Calcolo del numero di campioni per il set di validazione
-            num_val_samples = len(self.ID_paziente) // self.k_iter  # // si usa per approssimare al più piccolo
-            iter = self.k_iter
-
         # random_state: se posto ad un intero forza il generatore di numeri random ad estrarre sempre gli stessi valori.
         # In questo caso si fa in modo che ogni volta che viene lanciato il codice vengano generate sempre
         # le stesse iterazioni dal metodo bootstrap
         np.random.seed(42)
-        for self.idx in range(iter):
+        for self.idx in range(self.iter):
             if self.validation_method[0] == 'bootstrap':
-                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.bootstrap(self.idx, index)
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.bootstrap(self.idx, self.index)
             else:
-                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.kfold(self.idx, num_val_samples)
-
+                paziente_train, lab_paziente_train, paziente_val, lab_paziente_val = self.kfold(self.idx, self.num_val_samples)
 
             # Salvataggio dei set creati ad ogni iterazione di kfold o bootstrap
             np.save(os.path.join(self.run_folder, "data_pazienti/paziente_val_{}.h5".format(self.idx)), paziente_val, allow_pickle = False)
@@ -131,33 +149,54 @@ class Run_net():
 
             # --------------------------------- GENERAZIONE BATCH DI IMMAGINI ------------------------------------------
             # Data augmentation
+            if self.augmented:
+                if self.WGAN_lesion:
+                    # Costruzione classe per la generazione di immagini
+                    synthetize = GenerateSyntheticLesion(n_synthetic_slice = self.n_synthetic_slice,
+                                                         balance_class = self.balance_class,
+                                                         path_generator_adaptive = self.path_generator_adaptive,
+                                                         path_generator_not_adaptive = self.path_generator_not_adaptive)
+                    synthetize.count_label_train(Y_train)
 
-            if self.augmented == 0:
-                train_datagen = ImageDataGenerator()
-                train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle = True)
-            else:
+                    X_train_synthetic, Y_train_synthetic = synthetize.synthetize_lesion()
+
+                    X_train = np.concatenate((X_train, X_train_synthetic), axis=0)
+                    Y_train = np.concatenate((Y_train, Y_train_synthetic), axis=0)
+
+                    synthetize.count_label_train(Y_train) # controllo di immagini generate
 
                 train_datagen = ImageDataGenerator(rotation_range = 175,
                                                    width_shift_range = (-7, +7),
                                                    height_shift_range = (-7, +7),
-                                                   shear_range = 20,
+                                                   #shear_range = 20,
                                                    horizontal_flip = 'true',
                                                    vertical_flip='true',
+                                                   #preprocessing_function = lambda x: self.elastic_transform(x, [50,60], 8, random_state = None),
                                                    fill_mode = self.fill_mode,
                                                    cval = 0)
+                imgs = []
+                if self.elastic_deformation:
+                    print('Elastic deformation stage')
+                    for idx in range(X_train.shape[0]):
+                        imgs.append(self.elastic_transform(X_train[idx], [40, 60], 6, random_state=None))
+                    X_train = np.array(imgs)
+                    print(type(X_train[1][0][0][0]))
 
                 train_generator = train_datagen.flow(X_train, Y_train, batch_size = self.batch, shuffle=True)
+            else:
+                train_datagen = ImageDataGenerator()
+                train_generator = train_datagen.flow(X_train, Y_train, batch_size=self.batch, shuffle=True)
 
             test_datagen = ImageDataGenerator()
             validation_generator = test_datagen.flow(X_val, Y_val, batch_size = self.batch, shuffle = False)
-            print(self.batch)
-            print(X_train.shape[0])
-            print(X_val.shape[0])
+            print('Batch: {}'.format(self.batch))
+            print('Dimensione set di training {}'.format(X_train.shape[0]))
+            print('Dimensione set di validazione {}'.format(X_val.shape[0]))
             step_per_epoch = math.ceil(X_train.shape[0] / (self.batch))
             step_per_epoch_val = math.ceil(X_val.shape[0] / (self.batch))
             print("\nTRAINING DELLA RETE \n[INFO] "
-                  "-- Step per epoca set di training: {}\n"
-                  "-- Step per epoca set di validazione: {}".format(step_per_epoch, step_per_epoch_val))
+                  "-- Step per epoca set di training: {},"
+                  " step per epoca set di validazione: {}".format(step_per_epoch, step_per_epoch_val))
 
             self.how_generator_work(train_datagen, X_train)
             self.how_generator_work(test_datagen, X_val)
@@ -165,7 +204,7 @@ class Run_net():
             # ---------------------------------------------- MODELLO ---------------------------------------------------
             # Costruzione di un nuovo modello
             model = self.alexnet.build_alexnet()
-            self.alexnet.plot_model(self.run_folder, model)
+            #self.alexnet.plot_model(self.run_folder, model)
             lr_monitor = LearningRateMonitorCallback(self.run_folder, self.idx)
             metrics= MetricsCallback(validation_generator, self.batch, self.run_folder, self.idx)
             lr_scheduling = LearningRateScheduler(self.lr_schedule)
@@ -254,9 +293,9 @@ class Run_net():
                 plt.subplot(8, 8, idx + 1)
                 plt.axis('off')
                 image = img_batch[idx]
-                plt.imshow(array_to_img(image), cmap='gray')
+                plt.imshow(array_to_img(image), cmap='gray', vmin = 0, vmax=255)
             i += 1
-            if i % 1 == 0:
+            if i % 5 == 0:
                 break
 
         plt.tight_layout()
@@ -329,4 +368,42 @@ class Run_net():
         print("[INFO] -- Numero pazienti per il training: {}".format(paziente_train.shape))
 
         return paziente_train, lab_paziente_train, paziente_val, lab_paziente_val
+
+    # Function to distort image
+    def elastic_transform(self, image, alpha_range, sigma, random_state=None):
+        """Argomenti funzione:
+              image: array numpy con dimensioni (altezza, larghezza, canali)
+
+              alpha range: float per un valore fisso o [minimo, massimo] per
+              campionare un valore random da una distribuzione uniforme
+
+              Parametri per il controllo della deformazione
+              sigma: float, deviazione standard del filtro Gaussiano
+              che modifica la griglia di spostamenti
+        """
+        # Creazione di un oggetto RandomState che espone metodi per la generazione di numeri random, campionati
+        # da una distribuzione di probabilità. Con None non viene posto alcun seed
+        if random_state is None:
+            random_state = np.random.RandomState(None)
+
+        if np.isscalar(alpha_range): # Verifica se alpha range è un valore float o un intervallo
+            alpha = alpha_range
+        else:
+            alpha = np.random.uniform(low=alpha_range[0], high=alpha_range[1])
+
+        shape = image.shape
+        # Creazione delle matrici di spostamento: si utilizza l'oggetto random_state per richiamare il metodo rand e creare
+        # un tensore, della dimensione dell'input, popolato da campioni estratti randomicamente da una distribuzione uniforme
+        # nell'intervallo [0,1)
+        displacement_tensor = (random_state.rand(*shape) * 2 - 1)
+        # Applicazione di un filtro Gaussiano alla matrice di spostamenti. Tanto più sigma sarà piccolo, e alpha grande, tanto più
+        # l'intensità del filtro sarà elevata
+        dx = gaussian_filter(displacement_tensor, sigma) * alpha
+        dy = gaussian_filter(displacement_tensor, sigma) * alpha
+
+        # Creazione di una griglia di coordinate
+        x, y, z = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]), np.arange(shape[2]))
+        indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1)), np.reshape(z, (-1, 1))
+
+        return map_coordinates(image, indices, order=3, mode='reflect').reshape(shape)
 

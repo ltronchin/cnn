@@ -79,7 +79,7 @@ class EvaluateConvNet():
 
             Y_pred = predictions.round()
 
-            file = open(os.path.join(self.run_folder, "score_best_on_val_set.txt"), "a")
+            file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
             file.write("\n-------------- FOLD: {} --------------".format(idx))
             file.close()
 
@@ -90,31 +90,31 @@ class EvaluateConvNet():
             self.roc_curve(predictions, Y_test, idx)
 
         # --------------------------------------------- VALORI MEDI ----------------------------------------------------
-        accuracy_average = np.nanmean([x for x in self.accuracy_his])
-        precision_average = np.nanmean([x for x in self.precision_his])
-        recall_average = np.nanmean([x for x in self.recall_his])
-        f1_score_average = np.nanmean([x for x in self.f1_score_his])
-        specificity_average = np.nanmean([x for x in self.specificity_his])
-        g_average = np.nanmean([x for x in self.g_his])
+        accuracy_average = np.mean([x for x in self.accuracy_his])
+        precision_average = np.mean([x for x in self.precision_his])
+        recall_average = np.mean([x for x in self.recall_his])
+        f1_score_average = np.mean([x for x in self.f1_score_his])
+        specificity_average = np.mean([x for x in self.specificity_his])
+        g_average = np.mean([x for x in self.g_his])
 
-        accuracy_paziente_average = np.nanmean([x for x in self.accuracy_paziente_his])
-        precision_paziente_average = np.nanmean([x for x in self.precision_paziente_his])
-        recall_paziente_average = np.nanmean([x for x in self.recall_paziente_his])
-        f1_score_paziente_average = np.nanmean([x for x in self.f1_score_paziente_his])
-        specificity_paziente_average = np.nanmean([x for x in self.specificity_paziente_his])
-        g_paziente_average = np.nanmean([x for x in self.g_paziente_his])
+        accuracy_paziente_average = np.mean([x for x in self.accuracy_paziente_his])
+        precision_paziente_average = np.mean([x for x in self.precision_paziente_his])
+        recall_paziente_average = np.mean([x for x in self.recall_paziente_his])
+        f1_score_paziente_average = np.mean([x for x in self.f1_score_paziente_his])
+        specificity_paziente_average = np.mean([x for x in self.specificity_paziente_his])
+        g_paziente_average = np.mean([x for x in self.g_paziente_his])
 
         # Scrittura su file
         file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
         file.write("\nMEDIA SCORE SULLE {} FOLD\n".format(k))
-        file.write("\nScore slice:\nAccuratezza: {}"
+        file.write("\nScore SLICE:\nAccuratezza: {}"
                    "\nPrecisione: {}"
                    "\nRecall: {}"
                    "\nF1_score: {}"
                    "\nSpecificità: {}"
                    "\nMedia delle accuratezze: {}\n".format(accuracy_average, precision_average, recall_average,
                                                             f1_score_average, specificity_average, g_average))
-        file.write("\nScore paziente:"
+        file.write("\nScore PAZIENTE:"
                    "\nAccuratezza_paz: {}"
                    "\nPrecisione_paz: {}"
                    "\nRecall_paz: {}"
@@ -125,8 +125,12 @@ class EvaluateConvNet():
                                                                 specificity_paziente_average, g_paziente_average))
         file.close()
 
-        self.metrics(np.concatenate(self.true_slice_iterator), np.concatenate(self.predictions_slice_iterator).round(), 'all_predictions', None)
-        self.metrics(np.concatenate(self.true_paziente_iterator), np.concatenate(self.pred_paziente_iterator), 'all_predictions' , None)
+        file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
+        file.write("\nALL PREDICTIONS")
+        file.close()
+
+        self.metrics(np.concatenate(self.true_slice_iterator), np.concatenate(self.predictions_slice_iterator).round(), 'all_predictions', 'Slice')
+        self.metrics(np.concatenate(self.true_paziente_iterator), np.concatenate(self.pred_paziente_iterator), 'all_predictions' , 'Paziente')
 
     def predictions_pazienti(self, Y_pred, paziente_test, ID_paziente_slice_test, label_paziente_test, idx):
         pred_paziente_test_list = []

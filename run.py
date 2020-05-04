@@ -3,7 +3,7 @@ from Class.EvaluateConvNet import EvaluateConvNet
 k = 10
 boot_iter = 1
 
-#run_folder = 'C:/Users/GeNeSiS/PycharmProjects/cnn/run/CNN_Alexnet/2020-04-14_15-46-46'
+run_folder = 'C:/Users/GeNeSiS/PycharmProjects/cnn/run/CNN_Alexnet/2020-04-14_15-46-46'
 
 validation_method = 'kfold'
 if validation_method == 'kfold':
