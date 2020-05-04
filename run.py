@@ -11,5 +11,6 @@ if validation_method == 'kfold':
 else:
     n_iter = boot_iter
 
-evalConv = EvaluateConvNet(run_folder=run_folder)
+evalConv = EvaluateConvNet(run_folder=run_folder,
+                           id = 'ID10')
 evalConv.use_best_model_on_val_set(n_iter)

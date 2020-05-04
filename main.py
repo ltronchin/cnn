@@ -14,6 +14,7 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
+
 augmented = True # False
 augmentation = ['rotazione, shift, flip']
 elastic_deformation = False
@@ -97,10 +98,12 @@ for n_of_lesion2add in n_of_lesion2add_list:
         file.write("Campioni di test estratti ad ogni iterazione: {}\n".format(n_patient_test))
     else:
         file.write("Numero Fold: {}\n".format(k))
+
     file.write("Data Augmentation: {}, trasformazioni: {}\n".format(augmented, augmentation))
     file.write("Sintesi lesioni con WGAN: {}\n".format(WGAN_lesion))
     file.write("Bilanciamento classi tramite lesione sintetiche: {}\n".format(balance_training_data))
     file.write("Numero di slice aggiunte: {}\n".format(n_of_lesion2add))
+
     file.write("Fill mode: {}\n".format(fill_mode))
     file.write("Data e ora di inizio simulazione: " + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     file.close()
