@@ -3,7 +3,7 @@ import datetime
 import numpy as np
 
 from Models.Alexnet import Alexnet
-from Class.Load import Load
+from Utils.Load import Load
 from Callbacks.My_callbacks import My_callbacks
 from Class.Run_net import Run_net
 from Class.EvaluateConvNet import EvaluateConvNet
@@ -14,11 +14,14 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/ProgramData/Anaconda3/envs/tensorflow/Lib/site-packages/graphviz'
 
 # ------------------------------------- Definizione dei parametri della run ---------------------------------
-augmented = 0
+
+augmented = True # False
+augmentation = ['rotazione, shift, flip']
+elastic_deformation = False
 #fill_mode_list = ['constant', 'reflect', 'nearest']
 fill_mode = 'constant'
 load = False
-num_epochs = 250
+num_epochs = 500 #250
 batch = 128
 regularizer = None #l2 #l1 #l2_l1
 l1 = None #0.001
@@ -35,9 +38,19 @@ optimiser = 'adam'  #rmsprop
 initializer = 'xavier'
 input_dim = (80, 80, 1)
 batch_norm = True
-allview = False
+allview = False # True
 view = 'layer'
 lr_decay = False
+
+slice_path_ID = "ID8"
+
+# Sezione WGAN
+WGAN_lesion = True # False
+#n_of_lesion2add = 2500 # 5000, 7500, 10000 none
+n_of_lesion2add_list = [None, 2500, 5000, 7500, 10000]
+balance_training_data = True # False
+path_generator_adaptive = 'D:/Documenti/Tesi/Run/run/gan/WGAN-resnet/Data augmentation/003/adaptive/generator.h5'
+path_generator_not_adaptive = 'D:/Documenti/Tesi/Run/run/gan/WGAN-resnet/Data augmentation/003/non_adaptive/generator_not_adaptive.h5'
 
 drop = [True, True, True, True, True, True, True]
 drop_list = [0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5]
@@ -45,10 +58,7 @@ filter_list = [32, 32, 64, 64, 128, 128, 256]
 padding = 'valid' #same
 kernel_size = 3
 
-slice_path_list = ["ID9", "ID10"]
-
-
-for slice_path_ID in slice_path_list:
+for n_of_lesion2add in n_of_lesion2add_list:
     # ----------------------------------------------- Creazione del PATH --------------------------------------------
     model = 'CNN_Alexnet'
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -88,14 +98,20 @@ for slice_path_ID in slice_path_list:
         file.write("Campioni di test estratti ad ogni iterazione: {}\n".format(n_patient_test))
     else:
         file.write("Numero Fold: {}\n".format(k))
-    file.write("Data Augmentation: {}\n".format(augmented))
+
+    file.write("Data Augmentation: {}, trasformazioni: {}\n".format(augmented, augmentation))
+    file.write("Sintesi lesioni con WGAN: {}\n".format(WGAN_lesion))
+    file.write("Bilanciamento classi tramite lesione sintetiche: {}\n".format(balance_training_data))
+    file.write("Numero di slice aggiunte: {}\n".format(n_of_lesion2add))
+
     file.write("Fill mode: {}\n".format(fill_mode))
     file.write("Data e ora di inizio simulazione: " + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     file.close()
 
     # ------------------------------------------ Caricamento dati -----------------------------------------------
     # Creazione istanza della classe Load
-    load = Load(path_pazienti = "C:/Users/User/Desktop/Tesi/Matlab/data/pazienti_new.mat")
+    load = Load(path_pazienti = "D:/Download/data/pazienti_new.mat")
+
     if allview == True:
         view = 'layer'
         load.read_from_path("C:/Users/User/Desktop/Tesi/Matlab/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
@@ -114,10 +130,7 @@ for slice_path_ID in slice_path_list:
         labels = np.concatenate((labels_layer, labels_row, labels_column), axis = 0)
         ID_paziente_slice = np.concatenate((ID_paziente_slice_layer, ID_paziente_slice_row, ID_paziente_slice_column), axis = 0)
     else:
-
-
-
-        load.read_from_path("C:/Users/User/Desktop/Tesi/Matlab/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
+        load.read_from_path("D:/Download/data/ID_RUN/"+ slice_path_ID +"/Slices_data/"+ view +"/slices_padding_" + view + ".mat", view)
         ID_paziente, label_paziente = load.ID_paziente()
         slices, labels, ID_paziente_slice = load.slices()
 
@@ -138,7 +151,6 @@ for slice_path_ID in slice_path_list:
                       padding = padding,
                       regularizer = regularizer)
 
-
     my_callbacks = My_callbacks(run_folder)
 
     # ---------------------------------------- Creazione istanza classe Kfold ----------------------------------------------
@@ -154,11 +166,17 @@ for slice_path_ID in slice_path_list:
                       k_iter = k,
                       n_patient_test=n_patient_test,
                       augmented=augmented,
+                      elastic_deformation = elastic_deformation,
                       fill_mode=fill_mode,
                       alexnet=alexnet,
                       my_callbacks=my_callbacks,
                       run_folder=run_folder,
-                      lr_decay = lr_decay)
+                      lr_decay = lr_decay,
+                      WGAN_lesion = WGAN_lesion,
+                      path_generator_adaptive = path_generator_adaptive,
+                      path_generator_not_adaptive = path_generator_not_adaptive,
+                      n_of_lesion2add = n_of_lesion2add,
+                      balance_training_data = balance_training_data)
 
     run_net.run()
 

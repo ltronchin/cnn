@@ -114,7 +114,7 @@ class EvaluateConvNet():
                    "\nSpecificità: {}"
                    "\nMedia delle accuratezze: {}\n".format(accuracy_average, precision_average, recall_average,
                                                             f1_score_average, specificity_average, g_average))
-        file.write("\nScore paziente:"
+        file.write("\nScore PAZIENTE:"
                    "\nAccuratezza_paz: {}"
                    "\nPrecisione_paz: {}"
                    "\nRecall_paz: {}"
@@ -128,6 +128,7 @@ class EvaluateConvNet():
         file = open(os.path.join(self.run_folder, "score_best_on_val_set_{}.txt".format(self.id)), "a")
         file.write("\nALL PREDICTIONS")
         file.close()
+
         self.metrics(np.concatenate(self.true_slice_iterator), np.concatenate(self.predictions_slice_iterator).round(), 'all_predictions', 'Slice')
         self.metrics(np.concatenate(self.true_paziente_iterator), np.concatenate(self.pred_paziente_iterator), 'all_predictions' , 'Paziente')
 
